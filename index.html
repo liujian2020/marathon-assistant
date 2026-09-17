@@ -1,0 +1,1703 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>跑马助手Agent</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --blue: #2563eb;
+  --blue-light: #dbeafe;
+  --blue-dark: #1d4ed8;
+  --gray-50: #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd5e1;
+  --gray-400: #94a3b8;
+  --gray-500: #64748b;
+  --gray-600: #475569;
+  --gray-700: #334155;
+  --gray-800: #1e293b;
+  --red: #ef4444;
+  --green: #22c55e;
+  --orange: #f59e0b;
+  --radius: 12px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,0.12);
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: var(--gray-50);
+  color: var(--gray-800);
+  min-height: 100vh;
+  padding-bottom: 70px;
+}
+
+/* Header */
+.header {
+  background: linear-gradient(135deg, var(--blue) 0%, var(--blue-dark) 100%);
+  color: white;
+  padding: 16px 20px 12px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.header p {
+  font-size: 12px;
+  opacity: 0.85;
+  margin-top: 2px;
+}
+
+/* Bottom Nav */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  display: flex;
+  border-top: 1px solid var(--gray-200);
+  z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  background: none;
+  font-family: inherit;
+  color: var(--gray-400);
+  font-size: 11px;
+  gap: 3px;
+}
+.nav-item.active { color: var(--blue); }
+.nav-item svg { width: 22px; height: 22px; }
+.nav-item.active svg { stroke: var(--blue); }
+
+/* Pages */
+.page { display: none; padding: 16px; max-width: 600px; margin: 0 auto; }
+.page.active { display: block; }
+
+/* Filter Bar */
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.filter-btn {
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--gray-300);
+  background: white;
+  color: var(--gray-600);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.filter-btn.active {
+  background: var(--blue);
+  color: white;
+  border-color: var(--blue);
+}
+
+/* Calendar */
+.calendar-container {
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--blue);
+  color: white;
+}
+.calendar-header .month-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+.cal-nav {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: background 0.2s;
+}
+.cal-nav:hover { background: rgba(255,255,255,0.3); }
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 8px 8px 4px;
+  background: var(--blue-light);
+}
+.calendar-weekdays span {
+  text-align: center;
+  font-size: 12px;
+  color: var(--gray-500);
+  font-weight: 500;
+}
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 4px 8px 8px;
+  gap: 2px;
+}
+.cal-day {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+  position: relative;
+  transition: all 0.15s;
+  border: none;
+  background: none;
+  font-family: inherit;
+  color: var(--gray-700);
+  min-height: 38px;
+}
+.cal-day:hover { background: var(--gray-100); }
+.cal-day.today { background: var(--blue-light); color: var(--blue); font-weight: 700; }
+.cal-day.selected { background: var(--blue); color: white; font-weight: 600; }
+.cal-day.other-month { color: var(--gray-300); }
+.cal-day .dot {
+  width: 5px;
+  height: 5px;
+  background: var(--red);
+  border-radius: 50%;
+  position: absolute;
+  bottom: 3px;
+}
+.cal-day.selected .dot { background: white; }
+
+/* Race List */
+.race-list-section { margin-top: 8px; }
+.race-list-title {
+  font-size: 14px;
+  color: var(--gray-500);
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+.race-card {
+  background: white;
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  border-left: 4px solid var(--blue);
+}
+.race-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
+.race-card .race-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin-bottom: 6px;
+}
+.race-card .race-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--gray-500);
+}
+.race-card .race-meta span {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.race-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.tag-full { background: #dbeafe; color: #1d4ed8; }
+.tag-half { background: #dcfce7; color: #16a34a; }
+.tag-mini { background: #fef3c7; color: #d97706; }
+.no-races {
+  text-align: center;
+  padding: 30px;
+  color: var(--gray-400);
+  font-size: 14px;
+}
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  align-items: flex-end;
+  justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-content {
+  background: white;
+  border-radius: 16px 16px 0 0;
+  width: 100%;
+  max-width: 600px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 24px 20px 32px;
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.modal-close {
+  float: right;
+  background: var(--gray-100);
+  border: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-500);
+}
+.modal-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  padding-right: 40px;
+  color: var(--gray-800);
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.detail-item {
+  background: var(--gray-50);
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+.detail-item .label {
+  font-size: 11px;
+  color: var(--gray-400);
+  margin-bottom: 3px;
+  text-transform: uppercase;
+}
+.detail-item .value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+.detail-section {
+  margin-bottom: 18px;
+}
+.detail-section h4 {
+  font-size: 13px;
+  color: var(--gray-500);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.channel-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.channel-tag {
+  padding: 6px 12px;
+  background: var(--blue-light);
+  color: var(--blue);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  display: inline-block;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.channel-tag:hover { background: #bfdbfe; }
+.channel-tag.disabled {
+  background: var(--gray-200);
+  color: var(--gray-500);
+  cursor: not-allowed;
+}
+.channel-tag.wechat-tag {
+  background: #dcfce7;
+  color: #16a34a;
+}
+.channel-tag.wechat-tag:hover { background: #bbf7d0; }
+a.channel-tag {
+  background: var(--blue-light);
+  color: var(--blue);
+}
+a.channel-tag:hover {
+  background: #bfdbfe;
+  transform: translateY(-1px);
+}
+
+/* Toast */
+#toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.8);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 10000;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+#toast.show {
+  opacity: 1;
+}
+.btn-generate {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--blue) 0%, var(--blue-dark) 100%);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: opacity 0.2s;
+  font-family: inherit;
+}
+.btn-generate:hover { opacity: 0.9; }
+.registration-status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.status-open { background: #dcfce7; color: #16a34a; }
+.status-closed { background: #fee2e2; color: #dc2626; }
+.status-upcoming { background: #fef3c7; color: #d97706; }
+
+/* Home Page - AI Generate */
+.ai-form {
+  background: white;
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+.ai-form h3 {
+  font-size: 16px;
+  margin-bottom: 16px;
+  color: var(--gray-700);
+}
+.form-group {
+  margin-bottom: 14px;
+}
+.form-group label {
+  display: block;
+  font-size: 13px;
+  color: var(--gray-500);
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+.form-group input, .form-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--gray-700);
+  transition: border-color 0.2s;
+}
+.form-group input:focus, .form-group select:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+.btn-ai {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--blue) 0%, #7c3aed 100%);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  font-family: inherit;
+}
+.btn-ai:hover { opacity: 0.9; }
+.btn-ai:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* AI Result */
+.ai-result {
+  background: white;
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+  display: none;
+}
+.ai-result.show { display: block; }
+.ai-result h3 {
+  font-size: 16px;
+  margin-bottom: 14px;
+  color: var(--gray-700);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.result-section {
+  margin-bottom: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--gray-100);
+}
+.result-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.result-section h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--blue);
+  margin-bottom: 8px;
+}
+.result-section ul {
+  list-style: none;
+  padding: 0;
+}
+.result-section li {
+  font-size: 13px;
+  color: var(--gray-600);
+  padding: 4px 0;
+  padding-left: 16px;
+  position: relative;
+}
+.result-section li::before {
+  content: "•";
+  color: var(--blue);
+  position: absolute;
+  left: 0;
+  font-weight: bold;
+}
+
+/* Profile Page */
+.profile-card {
+  background: white;
+  border-radius: var(--radius);
+  padding: 24px 20px;
+  box-shadow: var(--shadow);
+  text-align: center;
+  margin-bottom: 16px;
+}
+.avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--blue-light), #c7d2fe);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+  font-size: 28px;
+}
+.profile-card .name {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.profile-card .subtitle {
+  font-size: 13px;
+  color: var(--gray-400);
+}
+.stats-row {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--gray-100);
+}
+.stat-item { text-align: center; }
+.stat-item .num { font-size: 20px; font-weight: 700; color: var(--blue); }
+.stat-item .lbl { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+
+.profile-form {
+  background: white;
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+.profile-form h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  color: var(--gray-700);
+}
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.btn-save {
+  width: 100%;
+  padding: 12px;
+  background: var(--blue);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 16px;
+  font-family: inherit;
+}
+
+/* My Races */
+.my-race-card {
+  background: white;
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  margin-bottom: 12px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.my-race-date {
+  text-align: center;
+  min-width: 50px;
+}
+.my-race-date .month { font-size: 11px; color: var(--gray-400); }
+.my-race-date .day { font-size: 24px; font-weight: 700; color: var(--blue); }
+.my-race-info { flex: 1; }
+.my-race-info .name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.my-race-info .meta { font-size: 12px; color: var(--gray-400); }
+.my-race-status {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+/* Loading */
+.loading-dots {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.loading-dots span {
+  width: 6px;
+  height: 6px;
+  background: white;
+  border-radius: 50%;
+  animation: bounce 1.4s infinite both;
+}
+.loading-dots span:nth-child(2) { animation-delay: 0.16s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.32s; }
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+/* Responsive */
+@media (min-width: 768px) {
+  .page { padding: 24px; }
+  .detail-grid { grid-template-columns: repeat(3, 1fr); }
+  .modal-content { border-radius: 16px; margin-bottom: 20px; max-height: 80vh; }
+  .modal-overlay { align-items: center; }
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <h1>🏃 跑马助手Agent</h1>
+  <p>AI智能备赛，助你PB</p>
+</header>
+
+<!-- 首页 - AI备赛生成 -->
+<div id="page-home" class="page active">
+  <div class="ai-form">
+    <h3>🤖 AI智能备赛方案生成</h3>
+    <div class="form-group">
+      <label>赛事名称</label>
+      <select id="ai-race-name">
+        <option value="">请选择赛事</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>出发城市</label>
+      <select id="ai-departure">
+        <option value="">请选择出发地</option>
+        <option value="北京">北京</option>
+        <option value="上海">上海</option>
+        <option value="广州">广州</option>
+        <option value="深圳">深圳</option>
+        <option value="成都">成都</option>
+        <option value="重庆">重庆</option>
+        <option value="杭州">杭州</option>
+        <option value="武汉">武汉</option>
+        <option value="南京">南京</option>
+        <option value="西安">西安</option>
+        <option value="长沙">长沙</option>
+        <option value="郑州">郑州</option>
+        <option value="天津">天津</option>
+        <option value="青岛">青岛</option>
+        <option value="沈阳">沈阳</option>
+        <option value="哈尔滨">哈尔滨</option>
+        <option value="昆明">昆明</option>
+        <option value="济南">济南</option>
+        <option value="福州">福州</option>
+        <option value="合肥">合肥</option>
+        <option value="南宁">南宁</option>
+        <option value="贵阳">贵阳</option>
+        <option value="太原">太原</option>
+        <option value="兰州">兰州</option>
+        <option value="石家庄">石家庄</option>
+        <option value="南昌">南昌</option>
+        <option value="海口">海口</option>
+        <option value="呼和浩特">呼和浩特</option>
+        <option value="乌鲁木齐">乌鲁木齐</option>
+        <option value="拉萨">拉萨</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>比赛城市</label>
+      <input type="text" id="ai-city" placeholder="如：北京">
+    </div>
+    <div class="form-group">
+      <label>比赛日期</label>
+      <input type="date" id="ai-date">
+    </div>
+    <div class="form-group">
+      <label>比赛项目</label>
+      <select id="ai-project">
+        <option value="full">全程马拉松 (42.195km)</option>
+        <option value="half">半程马拉松 (21.0975km)</option>
+        <option value="mini">迷你跑 (5km)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>你的目标完赛时间</label>
+      <select id="ai-goal">
+        <option value="finish">安全完赛</option>
+        <option value="4h">全马4小时内</option>
+        <option value="330">全马3小时30分</option>
+        <option value="3h">全马3小时内</option>
+        <option value="2h-half">半马2小时内</option>
+        <option value="130-half">半马1小时30分</option>
+      </select>
+    </div>
+    <button class="btn-ai" id="btn-generate" onclick="generatePlan()">✨ 生成备赛方案</button>
+  </div>
+  <div class="ai-result" id="ai-result"></div>
+</div>
+
+<!-- 赛事日历 -->
+<div id="page-calendar" class="page">
+  <div class="filter-bar">
+    <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">全部</button>
+    <button class="filter-btn" data-filter="full" onclick="setFilter('full', this)">全马</button>
+    <button class="filter-btn" data-filter="half" onclick="setFilter('half', this)">半马</button>
+    <button class="filter-btn" data-filter="mini" onclick="setFilter('mini', this)">迷你跑</button>
+  </div>
+  <div class="calendar-container">
+    <div class="calendar-header">
+      <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
+      <span class="month-title" id="month-title"></span>
+      <button class="cal-nav" onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="calendar-weekdays">
+      <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+    </div>
+    <div class="calendar-days" id="calendar-days"></div>
+  </div>
+  <div class="race-list-section">
+    <div class="race-list-title" id="race-list-title">点击日历查看赛事</div>
+    <div id="race-list"></div>
+  </div>
+</div>
+
+<!-- 我的档案 -->
+<div id="page-profile" class="page">
+  <div class="profile-card">
+    <div class="avatar">🏃</div>
+    <div class="name" id="profile-name">跑者</div>
+    <div class="subtitle">马拉松爱好者</div>
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="num">12</div>
+        <div class="lbl">完赛数</div>
+      </div>
+      <div class="stat-item">
+        <div class="num">3:42</div>
+        <div class="lbl">全马PB</div>
+      </div>
+      <div class="stat-item">
+        <div class="num">1:38</div>
+        <div class="lbl">半马PB</div>
+      </div>
+    </div>
+  </div>
+  <div class="profile-form">
+    <h3>个人信息</h3>
+    <div class="form-group">
+      <label>昵称</label>
+      <input type="text" id="pf-nick" value="跑者" placeholder="你的昵称">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>年龄</label>
+        <input type="number" id="pf-age" value="30" placeholder="年龄">
+      </div>
+      <div class="form-group">
+        <label>性别</label>
+        <select id="pf-gender">
+          <option value="male">男</option>
+          <option value="female">女</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>周跑量(km)</label>
+        <input type="number" id="pf-weekly" value="30" placeholder="周跑量">
+      </div>
+      <div class="form-group">
+        <label>跑步经验(年)</label>
+        <input type="number" id="pf-exp" value="2" placeholder="经验">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>最佳全马成绩</label>
+      <input type="text" id="pf-pb-full" value="3:42:00" placeholder="如 3:42:00">
+    </div>
+    <div class="form-group">
+      <label>最佳半马成绩</label>
+      <input type="text" id="pf-pb-half" value="1:38:00" placeholder="如 1:38:00">
+    </div>
+    <button class="btn-save" onclick="saveProfile()">保存信息</button>
+  </div>
+</div>
+
+<!-- 我的赛事 -->
+<div id="page-my-races" class="page">
+  <h3 style="font-size:16px; margin-bottom:14px; color:var(--gray-700);">我的赛事</h3>
+  <div id="my-races-list"></div>
+</div>
+
+<!-- 赛事详情弹窗 -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal-content" id="modal-content">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+  <button class="nav-item active" onclick="switchPage('home', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <span>AI备赛</span>
+  </button>
+  <button class="nav-item" onclick="switchPage('calendar', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    <span>赛事日历</span>
+  </button>
+  <button class="nav-item" onclick="switchPage('profile', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span>我的档案</span>
+  </button>
+  <button class="nav-item" onclick="switchPage('my-races', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+    <span>我的赛事</span>
+  </button>
+</nav>
+
+<script>
+// ===== 赛事数据 =====
+const races = [
+  { id:1, name:"渣打香港马拉松", city:"香港", date:"2026-01-18", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h15m", status:"closed", website:"#", wechat:"香港马拉松", apps:["马拉马拉","数字心动"], desc:"维港起跑，穿越隧道桥梁，最美城市天际线", regDeadline:"2025-12-19" },
+  { id:2, name:"江油马拉松", city:"江油", date:"2026-03-01", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"江油马拉松", apps:["马拉马拉","第一赛道"], desc:"李白故里，诗意赛道", regDeadline:"2026-01-30" },
+  { id:3, name:"娄底马拉松", city:"娄底", date:"2026-03-01", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"娄底马拉松", apps:["数字心动","第一赛道"], desc:"湘中明珠，紫鹊界梯田风光", regDeadline:"2026-01-30" },
+  { id:4, name:"中缅瑞丽-木姐跨国马拉松", city:"瑞丽", date:"2026-03-01", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"瑞丽马拉松", apps:["马拉马拉","数字心动"], desc:"一寨两国，中缅边境跨国跑", regDeadline:"2026-01-30" },
+  { id:5, name:"南京浦口马拉松", city:"南京", date:"2026-03-08", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"南京马拉松", apps:["数字心动","第一赛道"], desc:"浦口老山脚下，温泉之乡赛道", regDeadline:"2026-02-15" },
+  { id:6, name:"永川马拉松", city:"重庆", date:"2026-03-08", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"重庆马拉松", apps:["马拉马拉","第一赛道"], desc:"茶山竹海，永川豆豉飘香", regDeadline:"2026-02-06" },
+  { id:7, name:"上海女子半程马拉松", city:"上海", date:"2026-03-08", time:"07:30", level:"A1类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"上海马拉松", apps:["马拉马拉","数字心动"], desc:"专属女性跑者，精致城市半马", regDeadline:"2026-02-20" },
+  { id:8, name:"湛江半程马拉松", city:"湛江", date:"2026-03-08", time:"07:30", level:"B类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"湛江马拉松", apps:["第一赛道"], desc:"南国海滨，菠萝飘香的红土地", regDeadline:"2026-02-06" },
+  { id:9, name:"孝感马拉松", city:"孝感", date:"2026-03-15", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"孝感马拉松", apps:["马拉马拉"], desc:"孝文化之乡，董永传说发源地", regDeadline:"2026-02-13" },
+  { id:10, name:"清远马拉松", city:"清远", date:"2026-03-15", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"清远马拉松", apps:["数字心动","第一赛道"], desc:"北江之畔，温泉之城", regDeadline:"2026-02-13" },
+  { id:11, name:"万峰林马拉松", city:"兴义", date:"2026-03-15", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"兴义马拉松", apps:["马拉马拉","数字心动"], desc:"万峰成林，喀斯特峰林赛道", regDeadline:"2026-02-13" },
+  { id:12, name:"曲靖罗平花海马拉松", city:"曲靖", date:"2026-03-15", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"曲靖马拉松", apps:["马拉马拉","第一赛道"], desc:"罗平油菜花海，金色赛道奔跑", regDeadline:"2026-02-13" },
+  { id:13, name:"远安马拉松", city:"远安", date:"2026-03-15", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"远安马拉松", apps:["数字心动"], desc:"丹霞地貌，嫘祖故里", regDeadline:"2026-02-13" },
+  { id:14, name:"启东马拉松", city:"启东", date:"2026-03-15", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"启东马拉松", apps:["第一赛道"], desc:"江海交汇处，江苏最早日出", regDeadline:"2026-02-13" },
+  { id:15, name:"花亭湖马拉松", city:"太湖", date:"2026-03-15", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"太湖马拉松", apps:["马拉马拉"], desc:"花亭湖畔，禅宗文化发源地", regDeadline:"2026-02-13" },
+  { id:16, name:"上饶马拉松", city:"上饶", date:"2026-03-15", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"上饶马拉松", apps:["数字心动","第一赛道"], desc:"信江河畔，三清山脚下", regDeadline:"2026-02-13" },
+  { id:17, name:"上海半程马拉松", city:"上海", date:"2026-03-15", time:"07:30", level:"A1类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"上海马拉松", apps:["马拉马拉","数字心动"], desc:"浦东赛道，东方明珠脚下冲刺", regDeadline:"2026-02-28" },
+  { id:18, name:"南京半程马拉松", city:"南京", date:"2026-03-15", time:"07:30", level:"A1类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"南京马拉松", apps:["马拉马拉","数字心动","第一赛道"], desc:"六朝古都，明城墙下奔跑", regDeadline:"2026-02-28" },
+  { id:19, name:"重庆女子半程马拉松", city:"重庆", date:"2026-03-15", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"重庆马拉松", apps:["马拉马拉","第一赛道"], desc:"山城女性专属，南滨路最美赛道", regDeadline:"2026-02-13" },
+  { id:20, name:"南宁半程马拉松", city:"南宁", date:"2026-03-15", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"南宁马拉松", apps:["数字心动"], desc:"绿城南宁，邕江之畔", regDeadline:"2026-02-13" },
+  { id:21, name:"无锡马拉松", city:"无锡", date:"2026-03-22", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h15m", status:"closed", website:"#", wechat:"无锡马拉松", apps:["马拉马拉","数字心动"], desc:"樱花赛道，中国马拉松大满贯赛事", regDeadline:"2025-12-25" },
+  { id:22, name:"钦州马拉松", city:"钦州", date:"2026-03-22", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"钦州马拉松", apps:["第一赛道"], desc:"北部湾海滨，坭兴陶之都", regDeadline:"2026-02-20" },
+  { id:23, name:"贵州仁怀马拉松", city:"仁怀", date:"2026-03-22", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"仁怀马拉松", apps:["马拉马拉","数字心动"], desc:"茅台之乡，酒香伴跑", regDeadline:"2026-02-20" },
+  { id:24, name:"霞浦三沙马拉松", city:"霞浦", date:"2026-03-22", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"霞浦马拉松", apps:["数字心动","第一赛道"], desc:"中国最美滩涂，光影摄影圣地", regDeadline:"2026-02-20" },
+  { id:25, name:"苏州阳澄湖半程马拉松", city:"苏州", date:"2026-03-22", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"苏州马拉松", apps:["马拉马拉"], desc:"阳澄湖畔，大闸蟹之乡", regDeadline:"2026-02-20" },
+  { id:26, name:"重庆沙坪坝半程马拉松", city:"重庆", date:"2026-03-22", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"重庆马拉松", apps:["马拉马拉","第一赛道"], desc:"沙磁文化，歌乐山脚下", regDeadline:"2026-02-20" },
+  { id:27, name:"郑州马拉松", city:"郑州", date:"2026-03-29", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"郑州马拉松", apps:["马拉马拉","数字心动"], desc:"中原腹地，黄河之滨，商都遗址", regDeadline:"2026-03-10" },
+  { id:28, name:"石家庄马拉松", city:"石家庄", date:"2026-03-29", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"石家庄马拉松", apps:["数字心动","第一赛道"], desc:"太行山下，摇滚之城", regDeadline:"2026-02-27" },
+  { id:29, name:"柳州马拉松", city:"柳州", date:"2026-03-29", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"柳州马拉松", apps:["马拉马拉"], desc:"紫荆花城，壮族风情赛道", regDeadline:"2026-02-27" },
+  { id:30, name:"扬州鉴真半程马拉松", city:"扬州", date:"2026-03-29", time:"07:30", level:"A1类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"扬州马拉松", apps:["马拉马拉","数字心动"], desc:"瘦西湖畔，古运河边，烟花三月", regDeadline:"2026-03-10" },
+  { id:31, name:"苏州金鸡湖半程马拉松", city:"苏州", date:"2026-03-29", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"苏州马拉松", apps:["马拉马拉","数字心动","第一赛道"], desc:"金鸡湖畔，工业园区现代赛道", regDeadline:"2026-02-27" },
+  { id:32, name:"芜湖马拉松", city:"芜湖", date:"2026-03-29", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"芜湖马拉松", apps:["数字心动"], desc:"皖江明珠，奇瑞之城", regDeadline:"2026-02-27" },
+  { id:33, name:"昆明半程马拉松", city:"昆明", date:"2026-03-29", time:"07:30", level:"A1类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"昆明马拉松", apps:["马拉马拉","第一赛道"], desc:"春城高原，滇池之畔", regDeadline:"2026-02-27" },
+  { id:34, name:"济宁马拉松", city:"济宁", date:"2026-04-06", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"济宁马拉松", apps:["数字心动","第一赛道"], desc:"孔孟之乡，运河之都", regDeadline:"2026-03-07" },
+  { id:35, name:"武汉马拉松", city:"武汉", date:"2026-04-12", time:"07:30", level:"A1类", projects:["full","half","mini"], closeTime:"6h", status:"closed", website:"#", wechat:"武汉马拉松", apps:["马拉马拉","数字心动"], desc:"穿越长江大桥，樱花季最美赛道", regDeadline:"2025-12-19" },
+  { id:36, name:"北京城市副中心马拉松", city:"北京", date:"2026-04-19", time:"07:30", level:"A类", projects:["full"], closeTime:"6h", status:"closed", website:"#", wechat:"北京马拉松", apps:["马拉马拉","第一赛道"], desc:"通州运河之畔，城市副中心新貌", regDeadline:"2026-03-20" },
+  { id:37, name:"荣成滨海马拉松", city:"荣成", date:"2026-04-19", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"荣成马拉松", apps:["数字心动"], desc:"胶东半岛最东端，海天一色", regDeadline:"2026-03-20" },
+  { id:38, name:"宜宾长江首城马拉松", city:"宜宾", date:"2026-04-19", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"宜宾马拉松", apps:["第一赛道"], desc:"长江第一城，五粮液酒都", regDeadline:"2026-03-20" },
+  { id:39, name:"德州马拉松", city:"德州", date:"2026-04-19", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"德州马拉松", apps:["马拉马拉"], desc:"扒鸡之乡，太阳城", regDeadline:"2026-03-20" },
+  { id:40, name:"永州马拉松", city:"永州", date:"2026-04-19", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"永州马拉松", apps:["数字心动","第一赛道"], desc:"潇湘之源，柳宗元笔下山水", regDeadline:"2026-03-20" },
+  { id:41, name:"杭州女子半程马拉松", city:"杭州", date:"2026-04-19", time:"07:30", level:"A1类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"杭州马拉松", apps:["马拉马拉","数字心动"], desc:"西湖边起跑，女性专属赛事", regDeadline:"2026-03-20" },
+  { id:42, name:"大连马拉松", city:"大连", date:"2026-04-26", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h15m", status:"closed", website:"#", wechat:"大连马拉松", apps:["马拉马拉","数字心动","第一赛道"], desc:"海滨城市，有轨电车之都", regDeadline:"2026-02-12" },
+  { id:43, name:"保定马拉松", city:"保定", date:"2026-04-26", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"保定马拉松", apps:["马拉马拉"], desc:"直隶总督署，京畿重地", regDeadline:"2026-03-27" },
+  { id:44, name:"蚌埠马拉松", city:"蚌埠", date:"2026-04-26", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"蚌埠马拉松", apps:["数字心动","第一赛道"], desc:"珠城，龙子湖畔", regDeadline:"2026-03-27" },
+  { id:45, name:"汶川马拉松", city:"汶川", date:"2026-05-01", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"汶川马拉松", apps:["马拉马拉"], desc:"羌族文化，大爱重生之地", regDeadline:"2026-04-01" },
+  { id:46, name:"秦皇岛马拉松", city:"秦皇岛", date:"2026-05-10", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"秦皇岛马拉松", apps:["马拉马拉","数字心动"], desc:"渤海之滨，山海关外", regDeadline:"2026-04-10" },
+  { id:47, name:"大理马拉松", city:"大理", date:"2026-05-17", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"大理马拉松", apps:["数字心动","第一赛道"], desc:"苍山洱海，风花雪月之城", regDeadline:"2026-04-17" },
+  { id:48, name:"营口鲅鱼圈马拉松", city:"营口", date:"2026-05-17", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"营口马拉松", apps:["马拉马拉"], desc:"渤海湾畔，温泉之乡", regDeadline:"2026-04-17" },
+  { id:49, name:"吉林市马拉松", city:"吉林", date:"2026-05-31", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"吉林马拉松", apps:["马拉马拉","数字心动"], desc:"松花江畔，北国江城", regDeadline:"2026-05-01" },
+  { id:50, name:"兰州马拉松", city:"兰州", date:"2026-06-07", time:"07:30", level:"A1类", projects:["full","half","mini"], closeTime:"6h15m", status:"closed", website:"#", wechat:"兰州马拉松", apps:["马拉马拉","数字心动","第一赛道"], desc:"黄河风情线赛道，清凉夏日跑", regDeadline:"2026-03-04" },
+  { id:51, name:"贵阳马拉松", city:"贵阳", date:"2026-06-14", time:"07:30", level:"A1类", projects:["full","half","mini"], closeTime:"6h", status:"closed", website:"#", wechat:"贵阳马拉松", apps:["马拉马拉","数字心动"], desc:"爽爽贵阳，清凉避暑跑", regDeadline:"2026-05-15" },
+  { id:52, name:"黑河马拉松", city:"黑河", date:"2026-06-21", time:"07:30", level:"B类", projects:["full"], closeTime:"6h", status:"closed", website:"#", wechat:"黑河马拉松", apps:["第一赛道"], desc:"中俄边境，黑龙江畔", regDeadline:"2026-05-22" },
+  { id:53, name:"六盘水马拉松", city:"六盘水", date:"2026-07-19", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"六盘水马拉松", apps:["马拉马拉","数字心动"], desc:"中国凉都，19°C的夏天", regDeadline:"2026-06-19" },
+  { id:54, name:"楚雄马拉松", city:"楚雄", date:"2026-08-02", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"楚雄马拉松", apps:["数字心动","第一赛道"], desc:"彝族火把节之乡", regDeadline:"2026-07-03" },
+  { id:55, name:"阿尔山马拉松", city:"阿尔山", date:"2026-08-16", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"阿尔山马拉松", apps:["马拉马拉"], desc:"森林氧吧，火山温泉之城", regDeadline:"2026-07-17" },
+  { id:56, name:"呼伦贝尔草原马拉松", city:"呼伦贝尔", date:"2026-08-23", time:"07:30", level:"A类", projects:["full"], closeTime:"6h", status:"closed", website:"#", wechat:"呼伦贝尔马拉松", apps:["马拉马拉","数字心动"], desc:"天下第一草原，广阔无垠", regDeadline:"2026-07-24" },
+  { id:57, name:"沈阳康平卧龙湖马拉松", city:"沈阳", date:"2026-08-23", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"沈阳马拉松", apps:["第一赛道"], desc:"卧龙湖畔，湿地生态赛道", regDeadline:"2026-07-24" },
+  { id:58, name:"哈尔滨马拉松", city:"哈尔滨", date:"2026-08-30", time:"07:30", level:"A1类", projects:["full","half","mini"], closeTime:"6h", status:"closed", website:"#", wechat:"哈尔滨马拉松", apps:["马拉马拉","数字心动"], desc:"冰城夏都，松花江畔避暑跑", regDeadline:"2026-07-15" },
+  { id:59, name:"金昌半程马拉松", city:"金昌", date:"2026-09-06", time:"07:30", level:"B类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"金昌马拉松", apps:["数字心动","第一赛道"], desc:"镍都戈壁，紫金花城", regDeadline:"2026-08-07" },
+  { id:60, name:"沈阳马拉松", city:"沈阳", date:"2026-09-13", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"沈阳马拉松", apps:["马拉马拉","数字心动"], desc:"盛京皇城，东北第一城", regDeadline:"2026-08-14" },
+  { id:61, name:"官厅湖马拉松", city:"怀来", date:"2026-09-13", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"官厅湖马拉松", apps:["马拉马拉"], desc:"官厅水库畔，葡萄酒乡", regDeadline:"2026-08-14" },
+  { id:62, name:"榆林马拉松", city:"榆林", date:"2026-09-26", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"榆林马拉松", apps:["数字心动","第一赛道"], desc:"边塞名城，毛乌素沙漠边缘", regDeadline:"2026-09-16" },
+  { id:63, name:"克拉玛依马拉松", city:"克拉玛依", date:"2026-09-26", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"克拉玛依马拉松", apps:["马拉马拉"], desc:"石油之城，雅丹地貌", regDeadline:"2026-09-16" },
+  { id:64, name:"太原马拉松", city:"太原", date:"2026-09-27", time:"07:30", level:"A1类", projects:["full","half","mini"], closeTime:"6h", status:"closed", website:"#", wechat:"太原马拉松", apps:["马拉马拉","数字心动"], desc:"汾河畔开跑，龙城太原", regDeadline:"2026-09-17" },
+  { id:65, name:"衡水湖马拉松", city:"衡水", date:"2026-09-27", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"衡水马拉松", apps:["数字心动","第一赛道"], desc:"衡水湖畔，湿地生态赛道", regDeadline:"2026-09-17" },
+  { id:66, name:"延安红色半程马拉松", city:"延安", date:"2026-09-27", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"延安马拉松", apps:["马拉马拉"], desc:"革命圣地，红色记忆之旅", regDeadline:"2026-09-17" },
+  { id:67, name:"天津团泊湖半程马拉松", city:"天津", date:"2026-09-27", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"天津马拉松", apps:["马拉马拉","数字心动"], desc:"团泊湖畔，津门风光", regDeadline:"2026-09-17" },
+  { id:68, name:"大理小河淌水半程马拉松", city:"大理", date:"2026-09-27", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"大理马拉松", apps:["第一赛道"], desc:"小河淌水故乡，白族风情", regDeadline:"2026-09-17" },
+  { id:69, name:"长宁蜀南竹海半程马拉松", city:"长宁", date:"2026-09-27", time:"07:30", level:"B类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"长宁马拉松", apps:["数字心动"], desc:"蜀南竹海，翡翠长廊", regDeadline:"2026-09-17" },
+  { id:70, name:"石河子马拉松", city:"石河子", date:"2026-10-02", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"石河子马拉松", apps:["马拉马拉","第一赛道"], desc:"军垦新城，戈壁明珠", regDeadline:"2026-09-22" },
+  { id:71, name:"海淀马拉松", city:"北京", date:"2026-10-11", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"海淀马拉松", apps:["马拉马拉","数字心动"], desc:"中关村科技之区，高校云集", regDeadline:"2026-08-08" },
+  { id:72, name:"北京马拉松", city:"北京", date:"2026-10-18", time:"07:30", level:"A1类", projects:["full"], closeTime:"6h15m", status:"open", website:"#", wechat:"北京马拉松", apps:["马拉马拉","数字心动","第一赛道"], desc:"国马，天安门起跑，终点奥林匹克公园", regDeadline:"2026-09-22" },
+  { id:73, name:"济南马拉松", city:"济南", date:"2026-10-18", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"济南马拉松", apps:["马拉马拉","数字心动"], desc:"泉城奔跑，趵突泉大明湖", regDeadline:"2026-09-01" },
+  { id:74, name:"黄河口东营马拉松", city:"东营", date:"2026-10-18", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"东营马拉松", apps:["数字心动","第一赛道"], desc:"黄河入海口，湿地之都", regDeadline:"2026-09-01" },
+  { id:75, name:"西安马拉松", city:"西安", date:"2026-10-18", time:"07:30", level:"A1类", projects:["full","half","mini"], closeTime:"6h", status:"closed", website:"#", wechat:"西安马拉松", apps:["马拉马拉","数字心动"], desc:"古城墙下奔跑，穿越千年", regDeadline:"2026-09-01" },
+  { id:76, name:"烟台马拉松", city:"烟台", date:"2026-10-18", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"烟台马拉松", apps:["马拉马拉","第一赛道"], desc:"海滨仙境，葡萄酒之城", regDeadline:"2026-09-08" },
+  { id:77, name:"泰州马拉松", city:"泰州", date:"2026-10-18", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"upcoming", website:"#", wechat:"泰州马拉松", apps:["数字心动"], desc:"凤城河畔，梅兰芳故乡", regDeadline:"2026-09-08" },
+  { id:78, name:"丽江雪山马拉松", city:"丽江", date:"2026-10-18", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"upcoming", website:"#", wechat:"丽江马拉松", apps:["马拉马拉","数字心动"], desc:"玉龙雪山脚下，高原古城", regDeadline:"2026-09-08" },
+  { id:79, name:"长沙马拉松", city:"长沙", date:"2026-10-25", time:"07:30", level:"A1类", projects:["full","half","mini"], closeTime:"6h", status:"closed", website:"#", wechat:"长沙马拉松", apps:["马拉马拉","数字心动"], desc:"星城长沙，橘子洲头", regDeadline:"2026-08-11" },
+  { id:80, name:"成都马拉松", city:"成都", date:"2026-10-25", time:"07:30", level:"A1类", projects:["full","half","mini"], closeTime:"6h", status:"closed", website:"#", wechat:"成都马拉松", apps:["马拉马拉","数字心动","第一赛道"], desc:"天府之国，美食与跑步并行", regDeadline:"2026-06-24" },
+  { id:81, name:"宝鸡马拉松", city:"宝鸡", date:"2026-10-25", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"宝鸡马拉松", apps:["第一赛道"], desc:"青铜器之乡，炎帝故里", regDeadline:"2026-09-15" },
+  { id:82, name:"怀柔长城马拉松", city:"北京", date:"2026-10-25", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"怀柔马拉松", apps:["马拉马拉"], desc:"慕田峪长城脚下，山水怀柔", regDeadline:"2026-09-25" },
+  { id:83, name:"北京昌平马拉松", city:"北京", date:"2026-10-25", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"昌平马拉松", apps:["数字心动","第一赛道"], desc:"居庸关长城下，明十三陵旁", regDeadline:"2026-09-04" },
+  { id:84, name:"襄阳马拉松", city:"襄阳", date:"2026-10-25", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"upcoming", website:"#", wechat:"襄阳马拉松", apps:["马拉马拉","数字心动"], desc:"古隆中对，三国文化之城", regDeadline:"2026-09-15" },
+  { id:85, name:"威海马拉松", city:"威海", date:"2026-10-25", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"upcoming", website:"#", wechat:"威海马拉松", apps:["马拉马拉","第一赛道"], desc:"海滨花园，中国最宜居城市", regDeadline:"2026-09-15" },
+  { id:86, name:"青岛胶州湾大桥马拉松", city:"青岛", date:"2026-10-25", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"upcoming", website:"#", wechat:"青岛马拉松", apps:["数字心动"], desc:"跨越胶州湾大桥，红瓦碧海", regDeadline:"2026-09-15" },
+  { id:87, name:"常熟尚湖半程马拉松", city:"常熟", date:"2026-10-25", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"upcoming", website:"#", wechat:"常熟马拉松", apps:["第一赛道"], desc:"尚湖之畔，虞山脚下", regDeadline:"2026-09-15" },
+  { id:88, name:"嘉兴马拉松", city:"嘉兴", date:"2026-11-01", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"嘉兴马拉松", apps:["马拉马拉","数字心动"], desc:"红船精神，南湖之畔", regDeadline:"2026-10-01" },
+  { id:89, name:"淮南马拉松", city:"淮南", date:"2026-11-01", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"淮南马拉松", apps:["数字心动","第一赛道"], desc:"豆腐发源地，八公山下", regDeadline:"2026-09-15" },
+  { id:90, name:"新余仙女湖马拉松", city:"新余", date:"2026-11-01", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"新余马拉松", apps:["马拉马拉"], desc:"仙女湖畔，爱情圣地", regDeadline:"2026-10-01" },
+  { id:91, name:"宜昌马拉松", city:"宜昌", date:"2026-11-01", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"宜昌马拉松", apps:["马拉马拉","数字心动"], desc:"三峡门户，水电之都", regDeadline:"2026-10-01" },
+  { id:92, name:"衡阳马拉松", city:"衡阳", date:"2026-11-01", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"衡阳马拉松", apps:["第一赛道"], desc:"南岳衡山，回雁峰前", regDeadline:"2026-10-01" },
+  { id:93, name:"扬州高邮大运河半程马拉松", city:"高邮", date:"2026-11-01", time:"07:30", level:"B类", projects:["half"], closeTime:"3h", status:"open", website:"#", wechat:"高邮马拉松", apps:["数字心动"], desc:"大运河畔，邮驿故里", regDeadline:"2026-10-01" },
+  { id:94, name:"郴州马拉松", city:"郴州", date:"2026-11-07", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"郴州马拉松", apps:["马拉马拉","第一赛道"], desc:"湘南门户，雾漫东江湖", regDeadline:"2026-10-07" },
+  { id:95, name:"南昌马拉松", city:"南昌", date:"2026-11-08", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"南昌马拉松", apps:["马拉马拉","数字心动"], desc:"滕王阁畔，赣江之滨", regDeadline:"2026-09-01" },
+  { id:96, name:"合肥马拉松", city:"合肥", date:"2026-11-08", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"合肥马拉松", apps:["马拉马拉","数字心动"], desc:"巢湖之畔，科创之城", regDeadline:"2026-09-01" },
+  { id:97, name:"滁州马拉松", city:"滁州", date:"2026-11-08", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"滁州马拉松", apps:["数字心动","第一赛道"], desc:"醉翁亭下，琅琊山旁", regDeadline:"2026-10-08" },
+  { id:98, name:"高淳马拉松", city:"南京", date:"2026-11-08", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"高淳马拉松", apps:["马拉马拉"], desc:"国际慢城，固城湖畔蟹黄香", regDeadline:"2026-10-08" },
+  { id:99, name:"南通马拉松", city:"南通", date:"2026-11-08", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"南通马拉松", apps:["马拉马拉","数字心动"], desc:"濠河之畔，近代第一城", regDeadline:"2026-10-08" },
+  { id:100, name:"常德柳叶湖马拉松", city:"常德", date:"2026-11-08", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"常德马拉松", apps:["第一赛道"], desc:"桃花源里，柳叶湖畔", regDeadline:"2026-10-08" },
+  { id:101, name:"眉山马拉松", city:"眉山", date:"2026-11-08", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"眉山马拉松", apps:["数字心动"], desc:"三苏故里，东坡文化", regDeadline:"2026-10-08" },
+  { id:102, name:"乐山双遗马拉松", city:"乐山", date:"2026-11-08", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"乐山马拉松", apps:["马拉马拉","第一赛道"], desc:"乐山大佛旁，双遗产之城", regDeadline:"2026-10-08" },
+  { id:103, name:"顺德半程马拉松", city:"佛山", date:"2026-11-08", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"open", website:"#", wechat:"顺德马拉松", apps:["马拉马拉","数字心动"], desc:"世界美食之都，岭南水乡", regDeadline:"2026-10-08" },
+  { id:104, name:"桂林马拉松", city:"桂林", date:"2026-11-15", time:"07:30", level:"A1类", projects:["full","half","mini"], closeTime:"6h", status:"open", website:"#", wechat:"桂林马拉松", apps:["马拉马拉","数字心动","第一赛道"], desc:"漓江山水甲天下", regDeadline:"2026-09-29" },
+  { id:105, name:"天目湖马拉松", city:"溧阳", date:"2026-11-15", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"溧阳马拉松", apps:["马拉马拉"], desc:"天目湖畔，南山竹海", regDeadline:"2026-10-15" },
+  { id:106, name:"光谷马拉松", city:"武汉", date:"2026-11-15", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"光谷马拉松", apps:["数字心动","第一赛道"], desc:"光谷科技城，青春赛道", regDeadline:"2026-09-10" },
+  { id:107, name:"重庆璧山马拉松", city:"重庆", date:"2026-11-15", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"璧山马拉松", apps:["马拉马拉"], desc:"璧山古城，秀湖公园", regDeadline:"2026-10-15" },
+  { id:108, name:"苏州吴中马拉松", city:"苏州", date:"2026-11-15", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"苏州马拉松", apps:["马拉马拉","数字心动"], desc:"太湖之滨，吴中山水", regDeadline:"2026-10-15" },
+  { id:109, name:"上海长滩半程马拉松", city:"上海", date:"2026-11-15", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"上海马拉松", apps:["马拉马拉","第一赛道"], desc:"宝山长滩，黄浦江畔", regDeadline:"2026-10-06" },
+  { id:110, name:"千岛湖马拉松", city:"淳安", date:"2026-11-22", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"淳安马拉松", apps:["马拉马拉","数字心动"], desc:"千岛碧水，天下秀湖", regDeadline:"2026-10-10" },
+  { id:111, name:"中国-东盟马拉松", city:"防城港", date:"2026-11-22", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"upcoming", website:"#", wechat:"中国东盟马拉松", apps:["数字心动","第一赛道"], desc:"中越边境，北部湾海滨", regDeadline:"2026-10-22" },
+  { id:112, name:"衢州马拉松", city:"衢州", date:"2026-11-22", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"衢州马拉松", apps:["马拉马拉"], desc:"南孔圣地，衢州有礼", regDeadline:"2026-10-22" },
+  { id:113, name:"六安马拉松", city:"六安", date:"2026-11-22", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"六安马拉松", apps:["数字心动","第一赛道"], desc:"皖西门户，大别山下", regDeadline:"2026-09-27" },
+  { id:114, name:"腾冲马拉松", city:"腾冲", date:"2026-11-22", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"腾冲马拉松", apps:["马拉马拉","数字心动"], desc:"火山地热，银杏村金秋", regDeadline:"2026-10-22" },
+  { id:115, name:"义乌半程马拉松", city:"义乌", date:"2026-11-22", time:"07:30", level:"A1类", projects:["half"], closeTime:"3h", status:"open", website:"#", wechat:"义乌马拉松", apps:["马拉马拉","数字心动"], desc:"世界小商品之都", regDeadline:"2026-09-24" },
+  { id:116, name:"黄石半程马拉松", city:"黄石", date:"2026-11-22", time:"07:30", level:"B类", projects:["half"], closeTime:"3h", status:"open", website:"#", wechat:"黄石马拉松", apps:["第一赛道"], desc:"矿冶之都，青铜故里", regDeadline:"2026-10-22" },
+  { id:117, name:"济南半程马拉松", city:"济南", date:"2026-11-22", time:"07:30", level:"A1类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"济南马拉松", apps:["马拉马拉","数字心动"], desc:"泉城风光，趵突泉畔", regDeadline:"2026-10-12" },
+  { id:118, name:"青浦新城半程马拉松", city:"上海", date:"2026-11-22", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"upcoming", website:"#", wechat:"青浦马拉松", apps:["马拉马拉","第一赛道"], desc:"青浦新城，淀山湖畔", regDeadline:"2026-10-22" },
+  { id:119, name:"黄山马拉松", city:"黄山", date:"2026-11-29", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"黄山马拉松", apps:["马拉马拉","数字心动"], desc:"奇松怪石云海，徽州古韵", regDeadline:"2026-09-10" },
+  { id:120, name:"武夷山马拉松", city:"武夷山", date:"2026-11-29", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"武夷山马拉松", apps:["数字心动","第一赛道"], desc:"丹霞地貌，大红袍茶乡", regDeadline:"2026-10-29" },
+  { id:121, name:"婺源马拉松", city:"婺源", date:"2026-11-29", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"婺源马拉松", apps:["马拉马拉"], desc:"中国最美乡村，徽派古建", regDeadline:"2026-10-29" },
+  { id:122, name:"阳江海陵岛马拉松", city:"阳江", date:"2026-11-29", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"阳江马拉松", apps:["马拉马拉","数字心动"], desc:"海陵岛碧海银滩，南海一号", regDeadline:"2026-10-29" },
+  { id:123, name:"惠州马拉松", city:"惠州", date:"2026-11-29", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"惠州马拉松", apps:["第一赛道"], desc:"西湖之畔，巽寮湾海滨", regDeadline:"2026-10-20" },
+  { id:124, name:"陵水半程马拉松", city:"陵水", date:"2026-11-29", time:"07:30", level:"B类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"陵水马拉松", apps:["马拉马拉"], desc:"清水湾热带海滨，椰风海韵", regDeadline:"2026-10-20" },
+  { id:125, name:"贵州铜仁梵净山马拉松", city:"铜仁", date:"2026-11-29", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"铜仁马拉松", apps:["数字心动","第一赛道"], desc:"梵净山下，弥勒道场", regDeadline:"2026-10-20" },
+  { id:126, name:"深圳马拉松", city:"深圳", date:"2026-12-06", time:"07:30", level:"A1类", projects:["full","half","mini"], closeTime:"6h15m", status:"open", website:"#", wechat:"深圳马拉松", apps:["马拉马拉","数字心动","第一赛道"], desc:"湾区科技之城，深圳湾赛道", regDeadline:"2026-11-06" },
+  { id:127, name:"上合昆明马拉松", city:"昆明", date:"2026-12-06", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"昆明马拉松", apps:["马拉马拉","数字心动"], desc:"春城滇池，高原训练圣地", regDeadline:"2026-11-06" },
+  { id:128, name:"南宁马拉松", city:"南宁", date:"2026-12-06", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"南宁马拉松", apps:["马拉马拉","数字心动"], desc:"绿城邕江，东盟之门", regDeadline:"2026-11-06" },
+  { id:129, name:"温州马拉松", city:"温州", date:"2026-12-06", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"温州马拉松", apps:["数字心动","第一赛道"], desc:"瓯江之畔，商行天下", regDeadline:"2026-09-20" },
+  { id:130, name:"珠海马拉松", city:"珠海", date:"2026-12-06", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"珠海马拉松", apps:["马拉马拉"], desc:"情侣路海滨，百岛之市", regDeadline:"2026-11-06" },
+  { id:131, name:"泉州晋江马拉松", city:"泉州", date:"2026-12-06", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"泉州马拉松", apps:["马拉马拉","数字心动"], desc:"刺桐古城，海丝起点", regDeadline:"2026-11-06" },
+  { id:132, name:"厦门海沧半程马拉松", city:"厦门", date:"2026-12-06", time:"07:30", level:"A1类", projects:["half"], closeTime:"3h", status:"open", website:"#", wechat:"厦门马拉松", apps:["马拉马拉","数字心动","第一赛道"], desc:"海沧湖畔，鹭岛风光", regDeadline:"2026-10-08" },
+  { id:133, name:"澳门马拉松", city:"澳门", date:"2026-12-06", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"upcoming", website:"#", wechat:"澳门马拉松", apps:["数字心动"], desc:"历史城区，世遗赛道", regDeadline:"2026-11-01" },
+  { id:134, name:"琼海博鳌马拉松", city:"琼海", date:"2026-12-12", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"琼海马拉松", apps:["第一赛道"], desc:"博鳌小镇，万泉河畔", regDeadline:"2026-11-12" },
+  { id:135, name:"宁德马拉松", city:"宁德", date:"2026-12-12", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"宁德马拉松", apps:["马拉马拉"], desc:"闽东之光，畲族风情", regDeadline:"2026-11-02" },
+  { id:136, name:"广州马拉松", city:"广州", date:"2026-12-20", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h15m", status:"closed", website:"#", wechat:"广州马拉松", apps:["马拉马拉","数字心动","第一赛道"], desc:"珠江新城起跑，一江两岸风光", regDeadline:"2026-09-11" },
+  { id:137, name:"莆田马拉松", city:"莆田", date:"2026-12-20", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"莆田马拉松", apps:["数字心动"], desc:"妈祖故里，鞋都之城", regDeadline:"2026-11-20" },
+  { id:138, name:"汕头马拉松", city:"汕头", date:"2026-12-20", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"汕头马拉松", apps:["马拉马拉","第一赛道"], desc:"潮汕美食，海滨邹鲁", regDeadline:"2026-11-20" },
+  { id:139, name:"海南儋州马拉松", city:"儋州", date:"2026-12-20", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"儋州马拉松", apps:["马拉马拉","数字心动"], desc:"东坡遗风，千年古郡", regDeadline:"2026-11-20" },
+  { id:140, name:"深圳南山半程马拉松", city:"深圳", date:"2026-12-20", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"open", website:"#", wechat:"深圳马拉松", apps:["马拉马拉","第一赛道"], desc:"南山科技园，创新之城", regDeadline:"2026-11-20" },
+  { id:141, name:"重庆半程马拉松", city:"重庆", date:"2026-12-20", time:"07:30", level:"A1类", projects:["half"], closeTime:"3h", status:"open", website:"#", wechat:"重庆马拉松", apps:["马拉马拉","数字心动"], desc:"南滨路夜景，山城魅力", regDeadline:"2026-11-20" },
+  { id:142, name:"柳州半程马拉松", city:"柳州", date:"2026-12-20", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"open", website:"#", wechat:"柳州马拉松", apps:["第一赛道"], desc:"紫荆花城，百里柳江", regDeadline:"2026-11-20" },
+  { id:143, name:"江门马拉松", city:"江门", date:"2026-12-20", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"江门马拉松", apps:["数字心动"], desc:"中国第一侨乡，碉楼之乡", regDeadline:"2026-10-31" },
+  { id:144, name:"横琴马拉松", city:"珠海", date:"2026-12-27", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"横琴马拉松", apps:["马拉马拉"], desc:"横琴新区，大湾区赛道", regDeadline:"2026-09-12" },
+  { id:145, name:"梅州马拉松", city:"梅州", date:"2026-12-27", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"梅州马拉松", apps:["数字心动","第一赛道"], desc:"世界客都，足球之乡", regDeadline:"2026-11-27" },
+  { id:146, name:"福州马拉松", city:"福州", date:"2026-12-27", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"福州马拉松", apps:["马拉马拉","数字心动"], desc:"三坊七巷，有福之州", regDeadline:"2026-09-19" },
+  { id:147, name:"海南三亚马拉松", city:"三亚", date:"2026-12-27", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"三亚马拉松", apps:["马拉马拉","第一赛道"], desc:"热带海滨，天涯海角", regDeadline:"2026-11-27" },
+  { id:148, name:"海口马拉松", city:"海口", date:"2026-12-27", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"海口马拉松", apps:["马拉马拉","数字心动"], desc:"椰城风光，骑楼老街", regDeadline:"2026-11-27" },
+  { id:149, name:"重庆荣昌马拉松", city:"重庆", date:"2026-12-27", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"荣昌马拉松", apps:["第一赛道"], desc:"荣昌古镇，卤鹅飘香", regDeadline:"2026-11-27" },
+
+];
+
+// 赛事官网URL映射（已验证的真实官网地址）
+const websiteMap = {
+  1: "https://www.irunner.mobi", // 渣打香港马拉松
+  7: "https://www.shang-ma.com", // 上海女子半程马拉松
+  17: "https://www.shang-ma.com", // 上海半程马拉松
+  18: "https://www.nj-marathon.cn", // 南京半程马拉松
+  21: "https://www.wuximarathon.com", // 无锡马拉松
+  25: "https://www.suzhou-marathon.com", // 苏州阳澄湖半马
+  27: "https://www.zhengzhoumarathon.com", // 郑州马拉松
+  30: "https://www.yzmls.org", // 扬州鉴真半马
+  31: "https://www.suzhou-marathon.com", // 苏州金鸡湖半马
+  33: "https://www.kunmingmarathon.com", // 昆明半马
+  35: "https://www.wuhanmarathon.org", // 武汉马拉松
+  41: "https://hm.zhetiyu.cn", // 杭州女子半马
+  42: "https://www.dlmls.org", // 大连马拉松
+  50: "https://register.spoorts.cn/#/eventdetail?id=S7I9TW", // 兰州马拉松
+  51: "https://www.guimarathon.com", // 贵阳马拉松
+  58: "https://hrb-marathon.chinaath.com", // 哈尔滨马拉松
+  64: "https://www.tymarathon.com", // 太原马拉松
+  72: "https://www.beijing-marathon.com", // 北京马拉松
+  73: "https://www.jinanmarathon.com", // 济南马拉松
+  74: "https://www.dongyingmarathon.com", // 黄河口东营马拉松
+  75: "https://xi-ma.com", // 西安马拉松
+  76: "https://www.yantaimarathon.com", // 烟台马拉松
+  79: "https://www.marathonchangsha.com", // 长沙马拉松
+  80: "https://chengdumarathon.cn", // 成都马拉松
+  86: "https://www.qingdaomarathon.com", // 青岛胶州湾大桥马拉松
+  95: "https://www.nanchangmarathon.cn", // 南昌马拉松
+  96: "https://www.hefeimarathon.com", // 合肥马拉松
+  104: "https://www.guilinmarathon.com", // 桂林马拉松
+  109: "https://www.shang-ma.com", // 上海长滩半马
+  110: "https://www.qiandaohumarathon.com", // 千岛湖马拉松
+  117: "https://www.jinanmarathon.com", // 济南半马
+  119: "https://www.huangshanmarathon.com", // 黄山马拉松
+  126: "https://shenzhenmarathon.org.cn", // 深圳马拉松
+  127: "https://www.kunmingmarathon.com", // 上合昆明马拉松
+  128: "https://www.nanningmarathon.com", // 南宁马拉松
+  132: "https://www.xiamenhuandongmarathon.com", // 厦门海沧半马
+  136: "https://www.guangzhou-marathon.com", // 广州马拉松
+  140: "https://shenzhenmarathon.org.cn", // 深圳南山半马
+  146: "https://www.fuzhoumarathon.com", // 福州马拉松
+};
+
+// APP下载链接映射
+const appLinks = {
+  "马拉马拉": "https://www.maramara.com",
+  "数字心动": "https://www.sportnano.com",
+  "第一赛道": "https://www.firsttrack.cn",
+};
+
+// 我的赛事（模拟已报名）
+let myRaces = [
+  { raceId: 8, status: "已报名", bib: "待分配" },
+  { raceId: 10, status: "已报名", bib: "待分配" },
+  { raceId: 11, status: "待报名", bib: "-" },
+];
+
+// ===== 状态 =====
+let currentYear = 2026;
+let currentMonth = 8; // September (0-indexed)
+let currentFilter = 'all';
+let selectedDate = null;
+
+// ===== 页面切换 =====
+function switchPage(page, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  if (page === 'calendar') renderCalendar();
+  if (page === 'my-races') renderMyRaces();
+}
+
+// ===== 筛选 =====
+function setFilter(filter, el) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderCalendar();
+  if (selectedDate) showRacesForDate(selectedDate);
+}
+
+// ===== 日历 =====
+function changeMonth(delta) {
+  currentMonth += delta;
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  renderCalendar();
+}
+
+function getFilteredRaces() {
+  if (currentFilter === 'all') return races;
+  return races.filter(r => r.projects.includes(currentFilter));
+}
+
+function getRaceDates() {
+  const filtered = getFilteredRaces();
+  const dateSet = new Set();
+  filtered.forEach(r => dateSet.add(r.date));
+  return dateSet;
+}
+
+function renderCalendar() {
+  const title = document.getElementById('month-title');
+  title.textContent = `${currentYear}年${currentMonth + 1}月`;
+
+  const container = document.getElementById('calendar-days');
+  container.innerHTML = '';
+
+  const firstDay = new Date(currentYear, currentMonth, 1);
+  const lastDay = new Date(currentYear, currentMonth + 1, 0);
+  const startDay = firstDay.getDay();
+  const totalDays = lastDay.getDate();
+
+  const raceDates = getRaceDates();
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+  // Previous month padding
+  const prevMonth = new Date(currentYear, currentMonth, 0);
+  for (let i = startDay - 1; i >= 0; i--) {
+    const d = prevMonth.getDate() - i;
+    const btn = document.createElement('button');
+    btn.className = 'cal-day other-month';
+    btn.textContent = d;
+    container.appendChild(btn);
+  }
+
+  // Current month
+  for (let d = 1; d <= totalDays; d++) {
+    const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const btn = document.createElement('button');
+    btn.className = 'cal-day';
+    btn.textContent = d;
+
+    if (dateStr === todayStr) btn.classList.add('today');
+    if (selectedDate === dateStr) btn.classList.add('selected');
+    if (raceDates.has(dateStr)) {
+      const dot = document.createElement('span');
+      dot.className = 'dot';
+      btn.appendChild(dot);
+    }
+
+    btn.onclick = () => {
+      selectedDate = dateStr;
+      renderCalendar();
+      showRacesForDate(dateStr);
+    };
+    container.appendChild(btn);
+  }
+
+  // Next month padding
+  const remaining = 7 - ((startDay + totalDays) % 7);
+  if (remaining < 7) {
+    for (let i = 1; i <= remaining; i++) {
+      const btn = document.createElement('button');
+      btn.className = 'cal-day other-month';
+      btn.textContent = i;
+      container.appendChild(btn);
+    }
+  }
+}
+
+function showRacesForDate(dateStr) {
+  const filtered = getFilteredRaces();
+  const dayRaces = filtered.filter(r => r.date === dateStr);
+  const listEl = document.getElementById('race-list');
+  const titleEl = document.getElementById('race-list-title');
+
+  const parts = dateStr.split('-');
+  titleEl.textContent = `${parts[0]}年${parseInt(parts[1])}月${parseInt(parts[2])}日 赛事`;
+
+  if (dayRaces.length === 0) {
+    listEl.innerHTML = '<div class="no-races">当日暂无赛事安排</div>';
+    return;
+  }
+
+  listEl.innerHTML = dayRaces.map(r => {
+    const tags = r.projects.map(p => {
+      const labels = { full: '全马', half: '半马', mini: '迷你跑' };
+      const cls = { full: 'tag-full', half: 'tag-half', mini: 'tag-mini' };
+      return `<span class="race-tag ${cls[p]}">${labels[p]}</span>`;
+    }).join(' ');
+
+    const deadlineParts = r.regDeadline.split('-');
+    const deadlineDisplay = `${parseInt(deadlineParts[1])}月${parseInt(deadlineParts[2])}日`;
+    const statusBadge = r.status === 'open' ? '<span class="registration-status status-open" style="font-size:11px; padding:2px 8px;">报名中</span>' :
+                        r.status === 'closed' ? '<span class="registration-status status-closed" style="font-size:11px; padding:2px 8px;">已截止</span>' :
+                        '<span class="registration-status status-upcoming" style="font-size:11px; padding:2px 8px;">即将开放</span>';
+
+    return `
+      <div class="race-card" onclick="showRaceDetail(${r.id})">
+        <div class="race-name">${r.name}</div>
+        <div style="font-size:12px; color:var(--gray-500); margin-bottom:6px;">
+          报名截止: ${deadlineDisplay} ${statusBadge}
+        </div>
+        <div class="race-meta">
+          <span>📍 ${r.city}</span>
+          <span>🕐 ${r.time}</span>
+          <span>🏅 ${r.level}</span>
+          ${tags}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ===== 赛事详情弹窗 =====
+function showRaceDetail(id) {
+  const r = races.find(x => x.id === id);
+  if (!r) return;
+
+  const statusMap = {
+    open: '<span class="registration-status status-open">报名中</span>',
+    closed: '<span class="registration-status status-closed">已截止</span>',
+    upcoming: '<span class="registration-status status-upcoming">即将开放</span>',
+  };
+
+  const projectLabels = { full: '全程马拉松', half: '半程马拉松', mini: '迷你跑' };
+  const projectTags = r.projects.map(p => `<span class="race-tag tag-${p}">${projectLabels[p]}</span>`).join(' ');
+
+  const dateParts = r.date.split('-');
+  const dateDisplay = `${dateParts[0]}年${parseInt(dateParts[1])}月${parseInt(dateParts[2])}日`;
+
+  document.getElementById('modal-body').innerHTML = `
+    <div class="modal-title">${r.name}</div>
+    <p style="font-size:13px; color:var(--gray-500); margin-bottom:16px;">${r.desc}</p>
+    <div class="detail-grid">
+      <div class="detail-item">
+        <div class="label">城市</div>
+        <div class="value">📍 ${r.city}</div>
+      </div>
+      <div class="detail-item">
+        <div class="label">日期</div>
+        <div class="value">📅 ${dateDisplay}</div>
+      </div>
+      <div class="detail-item">
+        <div class="label">报名截止</div>
+        <div class="value">⏰ ${r.regDeadline}</div>
+      </div>
+      <div class="detail-item">
+        <div class="label">开跑时间</div>
+        <div class="value">🕐 ${r.time}</div>
+      </div>
+      <div class="detail-item">
+        <div class="label">田协等级</div>
+        <div class="value">🏅 ${r.level}</div>
+      </div>
+      <div class="detail-item">
+        <div class="label">关门时间</div>
+        <div class="value">⏰ ${r.closeTime}</div>
+      </div>
+      <div class="detail-item">
+        <div class="label">报名状态</div>
+        <div class="value">${statusMap[r.status]}</div>
+      </div>
+    </div>
+    <div class="detail-section">
+      <h4>比赛项目</h4>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">${projectTags}</div>
+    </div>
+    <div class="detail-section">
+      <h4>报名渠道</h4>
+      <div class="channel-list">
+        ${(() => { const url = websiteMap[r.id] || (r.website !== '#' ? r.website : ''); return url ? `<a class="channel-tag" href="${url}" target="_blank" rel="noopener">🌐 官方网站</a>` : `<span class="channel-tag disabled" title="官网暂未公布">🌐 官方网站（暂未公布）</span>`; })()}
+        <span class="channel-tag wechat-tag" onclick="copyWechat('${r.wechat}')" title="点击复制小程序名称">💬 微信小程序：${r.wechat} 📋</span>
+        ${r.apps.map(a => appLinks[a] ? `<a class="channel-tag" href="${appLinks[a]}" target="_blank" rel="noopener">📱 ${a}</a>` : `<span class="channel-tag">📱 ${a}</span>`).join('')}
+      </div>
+    </div>
+    <button class="btn-generate" onclick="fillAndGenerate(${r.id})">🤖 生成本场赛事备赛方案</button>
+  `;
+
+  document.getElementById('modal-overlay').classList.add('show');
+}
+
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modal-overlay')) return;
+  document.getElementById('modal-overlay').classList.remove('show');
+}
+
+// 复制微信小程序名称
+function copyWechat(name) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(name).then(() => {
+      showToast('已复制小程序名称：' + name);
+    }).catch(() => {
+      showToast('请手动搜索小程序：' + name);
+    });
+  } else {
+    showToast('请手动搜索小程序：' + name);
+  }
+}
+
+function showToast(msg) {
+  let toast = document.getElementById('toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// ===== 从弹窗填充表单并生成 =====
+function fillAndGenerate(id) {
+  const r = races.find(x => x.id === id);
+  if (!r) return;
+
+  closeModal();
+  switchPage('home', document.querySelectorAll('.nav-item')[0]);
+
+  document.getElementById('ai-race-name').value = r.id;
+  document.getElementById('ai-city').value = r.city;
+  document.getElementById('ai-date').value = r.date;
+  document.getElementById('ai-project').value = r.projects[0];
+
+  generatePlan();
+}
+
+// ===== AI备赛方案生成 =====
+function generatePlan() {
+  const raceSelect = document.getElementById('ai-race-name');
+  const raceId = parseInt(raceSelect.value);
+  const race = races.find(r => r.id === raceId);
+  const name = race ? race.name : '马拉松赛事';
+  const departure = document.getElementById('ai-departure').value;
+  const city = document.getElementById('ai-city').value || '未知';
+  const date = document.getElementById('ai-date').value;
+  const project = document.getElementById('ai-project').value;
+  const goal = document.getElementById('ai-goal').value;
+
+  if (!date) { alert('请选择比赛日期'); return; }
+
+  const btn = document.getElementById('btn-generate');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading-dots"><span></span><span></span><span></span></span> AI生成中...';
+
+  const projectLabels = { full: '全程马拉松', half: '半程马拉松', mini: '迷你跑' };
+  const goalLabels = { finish:'安全完赛', '4h':'全马4小时内', '330':'全马3小时30分', '3h':'全马3小时内', '2h-half':'半马2小时内', '130-half':'半马1小时30分' };
+
+  const dateParts = date.split('-');
+  const dateDisplay = `${dateParts[0]}年${parseInt(dateParts[1])}月${parseInt(dateParts[2])}日`;
+
+  // 模拟AI生成
+  setTimeout(() => {
+    const result = document.getElementById('ai-result');
+    result.classList.add('show');
+
+    const plans = getTrainingPlan(project, goal);
+    const transport = getTransportPlan(departure, city, dateDisplay);
+    const outfit = getOutfitTips(city, date);
+    const packing = getPackingList(project);
+
+    result.innerHTML = `
+      <h3>📋 ${name} · 备赛方案</h3>
+      <div class="result-section">
+        <h4>🏋️ 训练计划（赛前${plans.weeks}周）</h4>
+        <ul>${plans.items.map(i => `<li>${i}</li>`).join('')}</ul>
+      </div>
+      <div class="result-section">
+        <h4>🚄 交通方案与预算</h4>
+        ${transport.html}
+      </div>
+      <div class="result-section">
+        <h4>👕 穿搭与补给策略</h4>
+        <ul>${outfit.map(i => `<li>${i}</li>`).join('')}</ul>
+      </div>
+      <div class="result-section">
+        <h4>🎒 比赛日打包清单</h4>
+        <ul>${packing.map(i => `<li>${i}</li>`).join('')}</ul>
+      </div>
+    `;
+
+    btn.disabled = false;
+    btn.innerHTML = '✨ 重新生成备赛方案';
+  }, 1500);
+}
+
+function getTrainingPlan(project, goal) {
+  if (project === 'full') {
+    return {
+      weeks: 16,
+      items: [
+        "第1-4周（基础期）：周跑量30-35km，以轻松跑为主，配速6:30-7:00/km，每周3-4次跑步",
+        "第5-8周（提升期）：周跑量40-50km，加入1次节奏跑和1次长距离跑（LSD 25-30km）",
+        "第9-12周（强化期）：周跑量50-60km，加入马拉松配速跑，最长单次35km",
+        "第13-15周（巅峰期）：周跑量45-55km，模拟比赛配速训练，30km以上长距离2次",
+        "第16周（减量期）：周跑量降至25km，以轻松跑和短距离速度训练为主，充分恢复",
+        "力量训练：每周2次核心力量训练（平板支撑、弓步蹲、单腿硬拉等）",
+        "赛前3天：碳水加载，每天每公斤体重6-8g碳水化合物"
+      ]
+    };
+  } else if (project === 'half') {
+    return {
+      weeks: 10,
+      items: [
+        "第1-3周（基础期）：周跑量25-30km，轻松跑为主，配速5:30-6:30/km",
+        "第4-6周（提升期）：周跑量35-40km，加入1次间歇跑和1次长距离跑（16-18km）",
+        "第7-9周（强化期）：周跑量40-45km，半马配速跑训练，最长单次20km",
+        "第10周（减量期）：周跑量降至20km，保持短距离速度感",
+        "力量训练：每周2次下肢和核心训练"
+      ]
+    };
+  } else {
+    return {
+      weeks: 6,
+      items: [
+        "第1-2周：每周跑3次，每次3-5km，以轻松跑为主",
+        "第3-4周：每周跑3-4次，加入1次5km配速跑",
+        "第5周：最长单次5-6km，模拟比赛节奏",
+        "第6周（赛前）：减量至2次轻松跑，保持状态即可",
+        "注意热身和拉伸，预防受伤"
+      ]
+    };
+  }
+}
+
+function getTransportPlan(departure, destination, date) {
+  if (!departure || !destination) {
+    return {
+      html: '<ul><li>请选择出发城市和比赛城市，系统将为您生成交通方案和预算</li></ul>'
+    };
+  }
+
+  // 城市坐标（用于计算距离）
+  const cityCoords = {
+    '北京': [116.4, 39.9], '上海': [121.5, 31.2], '广州': [113.3, 23.1], '深圳': [114.1, 22.5],
+    '成都': [104.1, 30.6], '重庆': [106.5, 29.5], '杭州': [120.2, 30.3], '武汉': [114.3, 30.6],
+    '南京': [118.8, 32.1], '西安': [108.9, 34.3], '长沙': [113.0, 28.2], '郑州': [113.6, 34.7],
+    '天津': [117.2, 39.1], '青岛': [120.4, 36.1], '沈阳': [123.4, 41.8], '哈尔滨': [126.6, 45.8],
+    '昆明': [102.7, 25.0], '济南': [117.0, 36.7], '福州': [119.3, 26.1], '合肥': [117.3, 31.8],
+    '南宁': [108.3, 22.8], '贵阳': [106.7, 26.6], '太原': [112.5, 37.9], '兰州': [103.8, 36.1],
+    '石家庄': [114.5, 38.0], '南昌': [115.9, 28.7], '海口': [110.3, 20.0], '呼和浩特': [111.7, 40.8],
+    '乌鲁木齐': [87.6, 43.8], '拉萨': [91.1, 29.6], '大连': [121.6, 38.9], '厦门': [118.1, 24.5],
+    '无锡': [120.3, 31.6], '扬州': [119.4, 32.4], '苏州': [120.6, 31.3], '桂林': [110.3, 25.3],
+    '珠海': [113.6, 22.3], '烟台': [121.4, 37.5], '惠州': [114.4, 23.1], '佛山': [113.1, 23.0],
+    '香港': [114.2, 22.3], '澳门': [113.5, 22.2]
+  };
+
+  // 计算两点间距离（Haversine公式）
+  function calcDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // 地球半径（公里）
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  }
+
+  const from = cityCoords[departure];
+  const to = cityCoords[destination];
+  
+  if (!from || !to) {
+    return {
+      html: '<ul><li>暂不支持该城市的交通规划，请手动查询交通信息</li></ul>'
+    };
+  }
+
+  const distance = calcDistance(from[0], from[1], to[0], to[1]);
+  
+  // 交通方式推荐
+  let options = [];
+  let totalBudget = { min: 0, max: 0 };
+
+  // 高铁（距离 < 1000km 优先推荐）
+  if (distance < 1200) {
+    const trainTime = Math.round(distance / 250 * 10) / 10; // 高铁平均时速250km/h
+    const trainPrice = Math.round(distance * 0.4); // 高铁二等座约0.4元/km
+    options.push({
+      type: '🚄 高铁',
+      duration: `${trainTime}小时`,
+      price: `¥${trainPrice}（二等座）`,
+      note: distance < 500 ? '推荐：短途首选，舒适便捷' : '推荐：性价比高，准点率高',
+      cost: trainPrice * 2 // 往返
+    });
+  }
+
+  // 飞机（距离 > 800km）
+  if (distance > 800) {
+    const flightTime = Math.round(distance / 700 * 10) / 10 + 2; // 飞行时间+值机候机
+    const flightPrice = Math.round(500 + distance * 0.3); // 机票基础价+距离加成
+    options.push({
+      type: '✈️ 飞机',
+      duration: `${flightTime}小时（含候机）`,
+      price: `¥${flightPrice}（经济舱）`,
+      note: distance > 1500 ? '推荐：长途首选，节省时间' : '适合时间紧张的跑者',
+      cost: flightPrice * 2
+    });
+  }
+
+  // 普通火车（所有距离）
+  const normalTrainTime = Math.round(distance / 120 * 10) / 10;
+  const normalTrainPrice = Math.round(distance * 0.15);
+  options.push({
+    type: '🚂 普通火车',
+    duration: `${normalTrainTime}小时`,
+    price: `¥${normalTrainPrice}（硬卧）`,
+    note: '经济实惠，适合预算有限',
+    cost: normalTrainPrice * 2
+  });
+
+  // 住宿费用（赛前1-2晚）
+  const hotelPrice = destination === '北京' || destination === '上海' || destination === '深圳' ? 400 : 
+                     destination === '广州' || destination === '杭州' || destination === '南京' ? 350 : 280;
+  const hotelNights = 2;
+  const hotelCost = hotelPrice * hotelNights;
+
+  // 市内交通
+  const localTransport = 150;
+
+  // 餐饮
+  const foodCost = 200;
+
+  // 生成HTML
+  let html = '<div style="margin-bottom:12px;">';
+  html += `<strong>出发地：</strong>${departure} → <strong>比赛地：</strong>${destination}<br>`;
+  html += `<strong>直线距离：</strong>约${Math.round(distance)}公里<br>`;
+  html += `<strong>建议：</strong>赛前1-2天抵达，适应环境并领取参赛包`;
+  html += '</div>';
+
+  html += '<div style="margin-bottom:12px;"><strong>🚄 交通方式</strong></div>';
+  html += '<ul>';
+  options.forEach(opt => {
+    html += `<li><strong>${opt.type}</strong>：${opt.duration}，${opt.price}<br>`;
+    html += `<span style="color:#666;font-size:13px;">💡 ${opt.note}</span></li>`;
+  });
+  html += '</ul>';
+
+  html += '<div style="margin-bottom:12px;"><strong>💰 预算明细（单人）</strong></div>';
+  html += '<ul>';
+  html += `<li>往返交通：¥${options[0].cost} - ¥${options[options.length-1].cost}（视交通方式）</li>`;
+  html += `<li>住宿${hotelNights}晚：¥${hotelCost}（赛事期间酒店，建议提前预订）</li>`;
+  html += `<li>市内交通：¥${localTransport}（地铁/打车/公交）</li>`;
+  html += `<li>餐饮${hotelNights}天：¥${foodCost}（含赛前碳水加载餐）</li>`;
+  
+  const minTotal = options[options.length-1].cost + hotelCost + localTransport + foodCost;
+  const maxTotal = options[0].cost + hotelCost + localTransport + foodCost;
+  
+  html += '</ul>';
+  html += `<div style="background:#f0f9ff;padding:12px;border-radius:8px;margin-top:12px;">`;
+  html += `<strong>💵 总预算：¥${minTotal} - ¥${maxTotal}</strong><br>`;
+  html += `<span style="font-size:13px;color:#666;">💡 提示：选择高铁+经济型酒店可控制在¥${minTotal}左右</span>`;
+  html += '</div>';
+
+  return { html };
+}
+
+function getOutfitTips(city, date) {
+  const month = parseInt(date.split('-')[1]);
+  let tips = [];
+  if (month >= 3 && month <= 5) {
+    tips = [
+      "春季气温10-20°C，建议穿短袖/背心 + 臂袖",
+      "起跑前穿一次性雨衣保暖，开跑后丢弃",
+      "涂抹防晒霜（SPF50+），戴空顶帽和运动墨镜",
+      "补给策略：每5km补水，每10km补充能量胶一支",
+      "前半程控速，后半程根据体感适当加速"
+    ];
+  } else if (month >= 6 && month <= 8) {
+    tips = [
+      "夏季高温，建议穿轻薄透气背心+短裤",
+      "重点防暑：赛前涂抹防晒，携带空顶帽",
+      "补给加密：每2.5km补水站必进，每站小口饮水",
+      "能量胶提前测试，避免肠胃不适",
+      "注意听身体信号，高温天适当降速，安全第一"
+    ];
+  } else if (month >= 9 && month <= 11) {
+    tips = [
+      "秋季气温15-25°C，是马拉松黄金季节",
+      "建议穿短袖或薄款长袖，根据起跑时间调整",
+      "早晚温差大，赛前穿保暖外套候跑",
+      "补给策略：每5km补水，10km后补充能量胶/盐丸",
+      "秋季干燥，注意赛前赛后充分补水"
+    ];
+  } else {
+    tips = [
+      "冬季气温较低，建议穿长袖压缩衣+手套+耳罩",
+      "起跑前穿厚外套保暖，开跑后脱掉存放",
+      "注意保暖关节部位，可涂抹凡士林防磨",
+      "补给策略：每5km补温热运动饮料",
+      "赛后迅速换上干衣物，防止着凉"
+    ];
+  }
+  return tips;
+}
+
+function getPackingList(project) {
+  const base = [
+    "号码布 + 计时芯片（赛前领取确认）",
+    "跑鞋（赛前穿过的，不要穿新鞋！）",
+    "跑步服装（提前测试过的一套）",
+    "运动内衣/压缩衣",
+    "能量胶 4-6支 + 盐丸",
+    "凡士林/防磨膏（大腿内侧、腋下等）",
+    "一次性雨衣（起跑前保暖用）",
+    "赛后替换干衣物 + 拖鞋",
+    "手机 + 充电宝（存包前拍照留念）",
+    "身份证/存包凭证"
+  ];
+  if (project === 'full') {
+    base.push("额外能量胶2支（30km后备用）");
+    base.push("压缩袜（预防小腿抽筋）");
+    base.push("乳贴（长距离防磨）");
+  }
+  return base;
+}
+
+// ===== 我的赛事 =====
+function renderMyRaces() {
+  const container = document.getElementById('my-races-list');
+  if (myRaces.length === 0) {
+    container.innerHTML = '<div class="no-races">还没有报名赛事，去赛事日历看看吧！</div>';
+    return;
+  }
+  container.innerHTML = myRaces.map(mr => {
+    const r = races.find(x => x.id === mr.raceId);
+    if (!r) return '';
+    const parts = r.date.split('-');
+    const months = ['','1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+    const statusClass = mr.status === '已报名' ? 'status-open' : 'status-upcoming';
+    return `
+      <div class="my-race-card" onclick="showRaceDetail(${r.id})">
+        <div class="my-race-date">
+          <div class="month">${months[parseInt(parts[1])]}</div>
+          <div class="day">${parseInt(parts[2])}</div>
+        </div>
+        <div class="my-race-info">
+          <div class="name">${r.name}</div>
+          <div class="meta">📍 ${r.city} · ${r.time}开跑</div>
+        </div>
+        <span class="my-race-status ${statusClass}">${mr.status}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+// ===== 档案保存 =====
+function saveProfile() {
+  const nick = document.getElementById('pf-nick').value;
+  document.getElementById('profile-name').textContent = nick || '跑者';
+  alert('个人信息已保存！');
+}
+
+// ===== 赛事下拉选择器 =====
+function populateRaceSelect() {
+  const select = document.getElementById('ai-race-name');
+  // Group races by month
+  const groups = {};
+  races.forEach(r => {
+    const month = parseInt(r.date.split('-')[1]);
+    if (!groups[month]) groups[month] = [];
+    groups[month].push(r);
+  });
+  // Sort months and populate
+  Object.keys(groups).sort((a,b) => a-b).forEach(month => {
+    const optgroup = document.createElement('optgroup');
+    optgroup.label = month + '月';
+    groups[month].forEach(r => {
+      const option = document.createElement('option');
+      option.value = r.id;
+      option.textContent = r.name;
+      optgroup.appendChild(option);
+    });
+    select.appendChild(optgroup);
+  });
+}
+
+function onRaceSelectChange() {
+  const select = document.getElementById('ai-race-name');
+  const raceId = parseInt(select.value);
+  if (!raceId) return;
+  const r = races.find(x => x.id === raceId);
+  if (!r) return;
+  document.getElementById('ai-city').value = r.city;
+  document.getElementById('ai-date').value = r.date;
+  document.getElementById('ai-project').value = r.projects[0];
+}
+
+// ===== 初始化 =====
+document.addEventListener('DOMContentLoaded', () => {
+  populateRaceSelect();
+  document.getElementById('ai-race-name').addEventListener('change', onRaceSelectChange);
+  renderCalendar();
+  renderMyRaces();
+});
+
+// Close modal on overlay click
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) {
+    this.classList.remove('show');
+  }
+});
+</script>
+</body>
+</html>

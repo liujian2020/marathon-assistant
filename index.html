@@ -1633,7 +1633,10 @@ function renderMyRaces() {
     if (!r) return '';
     const parts = r.date.split('-');
     const months = ['','1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-    const statusClass = mr.status === '已报名' ? 'status-open' : 'status-upcoming';
+    const statusClass = mr.status === '已中签' ? 'status-open' : 
+                        mr.status === '已完赛' ? 'status-closed' :
+                        mr.status === '未中签' ? 'status-closed' :
+                        'status-upcoming';
     return `
       <div class="my-race-card" onclick="showRaceDetail(${r.id})">
         <div class="my-race-date">
@@ -1670,8 +1673,11 @@ function showAddRaceModal() {
     <div style="margin:20px 0;">
       <label style="display:block; margin-bottom:8px; font-weight:500;">报名状态</label>
       <select id="add-race-status" style="width:100%; padding:12px; border:1px solid var(--gray-300); border-radius:8px; font-size:14px;">
-        <option value="已报名">已报名</option>
-        <option value="待报名">待报名</option>
+        <option value="已报名待抽签">已报名（待抽签）</option>
+        <option value="已中签">已中签</option>
+        <option value="未中签">未中签</option>
+        <option value="候补中">候补中</option>
+        <option value="已完赛">已完赛</option>
       </select>
     </div>
     <div style="display:flex; gap:12px; margin-top:24px;">

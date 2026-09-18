@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>跑马助手Agent</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
@@ -815,7 +816,13 @@ a.channel-tag:hover {
 
 <!-- 我的赛事 -->
 <div id="page-my-races" class="page">
-  <h3 style="font-size:16px; margin-bottom:14px; color:var(--gray-700);">我的赛事</h3>
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+    <h3 style="font-size:16px; color:var(--gray-700);">我的赛事</h3>
+    <div style="display:flex; gap:8px;">
+      <button onclick="showImportRaceModal()" style="padding:8px 16px; background:var(--green); color:white; border:none; border-radius:8px; font-size:14px; cursor:pointer;">📷 导入截图</button>
+      <button onclick="showAddRaceModal()" style="padding:8px 16px; background:var(--blue); color:white; border:none; border-radius:8px; font-size:14px; cursor:pointer;">+ 手动添加</button>
+    </div>
+  </div>
   <div id="my-races-list"></div>
 </div>
 
@@ -1052,12 +1059,13 @@ const appLinks = {
   "第一赛道": "https://www.firsttrack.cn",
 };
 
-// 我的赛事（模拟已报名）
-let myRaces = [
-  { raceId: 8, status: "已报名", bib: "待分配" },
-  { raceId: 10, status: "已报名", bib: "待分配" },
-  { raceId: 11, status: "待报名", bib: "-" },
-];
+// 我的赛事（从 localStorage 读取）
+let myRaces = JSON.parse(localStorage.getItem('myRaces') || '[]');
+
+// 保存我的赛事到 localStorage
+function saveMyRaces() {
+  localStorage.setItem('myRaces', JSON.stringify(myRaces));
+}
 
 // ===== 状态 =====
 let currentYear = 2026;
@@ -1617,10 +1625,10 @@ function getPackingList(project) {
 function renderMyRaces() {
   const container = document.getElementById('my-races-list');
   if (myRaces.length === 0) {
-    container.innerHTML = '<div class="no-races">还没有报名赛事，去赛事日历看看吧！</div>';
+    container.innerHTML = '<div class="no-races">还没有报名赛事，点击右上角"添加赛事"按钮开始吧！</div>';
     return;
   }
-  container.innerHTML = myRaces.map(mr => {
+  container.innerHTML = myRaces.map((mr, index) => {
     const r = races.find(x => x.id === mr.raceId);
     if (!r) return '';
     const parts = r.date.split('-');
@@ -1636,10 +1644,243 @@ function renderMyRaces() {
           <div class="name">${r.name}</div>
           <div class="meta">📍 ${r.city} · ${r.time}开跑</div>
         </div>
-        <span class="my-race-status ${statusClass}">${mr.status}</span>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
+          <span class="my-race-status ${statusClass}">${mr.status}</span>
+          <button onclick="event.stopPropagation(); removeMyRace(${index})" style="padding:4px 8px; background:#fee2e2; color:#dc2626; border:none; border-radius:4px; font-size:12px; cursor:pointer;">删除</button>
+        </div>
       </div>
     `;
   }).join('');
+}
+
+// 显示添加赛事弹窗
+function showAddRaceModal() {
+  const modal = document.getElementById('modal-overlay');
+  const body = document.getElementById('modal-body');
+  
+  body.innerHTML = `
+    <div class="modal-title">添加已报名赛事</div>
+    <div style="margin:20px 0;">
+      <label style="display:block; margin-bottom:8px; font-weight:500;">选择赛事</label>
+      <select id="add-race-select" style="width:100%; padding:12px; border:1px solid var(--gray-300); border-radius:8px; font-size:14px;">
+        <option value="">请选择赛事...</option>
+        ${races.map(r => `<option value="${r.id}">${r.name} - ${r.date}</option>`).join('')}
+      </select>
+    </div>
+    <div style="margin:20px 0;">
+      <label style="display:block; margin-bottom:8px; font-weight:500;">报名状态</label>
+      <select id="add-race-status" style="width:100%; padding:12px; border:1px solid var(--gray-300); border-radius:8px; font-size:14px;">
+        <option value="已报名">已报名</option>
+        <option value="待报名">待报名</option>
+      </select>
+    </div>
+    <div style="display:flex; gap:12px; margin-top:24px;">
+      <button onclick="closeModal()" style="flex:1; padding:12px; background:var(--gray-200); color:var(--gray-700); border:none; border-radius:8px; font-size:14px; cursor:pointer;">取消</button>
+      <button onclick="addRaceToMyList()" style="flex:1; padding:12px; background:var(--blue); color:white; border:none; border-radius:8px; font-size:14px; cursor:pointer;">添加</button>
+    </div>
+  `;
+  
+  modal.classList.add('show');
+}
+
+// 添加赛事到我的列表
+function addRaceToMyList() {
+  const raceId = parseInt(document.getElementById('add-race-select').value);
+  const status = document.getElementById('add-race-status').value;
+  
+  if (!raceId) {
+    alert('请选择赛事');
+    return;
+  }
+  
+  // 检查是否已存在
+  if (myRaces.find(mr => mr.raceId === raceId)) {
+    alert('该赛事已在你的列表中');
+    return;
+  }
+  
+  myRaces.push({
+    raceId: raceId,
+    status: status,
+    bib: '待分配'
+  });
+  
+  saveMyRaces();
+  closeModal();
+  renderMyRaces();
+}
+
+// 删除我的赛事
+function removeMyRace(index) {
+  if (confirm('确定要删除这个赛事吗？')) {
+    myRaces.splice(index, 1);
+    saveMyRaces();
+    renderMyRaces();
+  }
+}
+
+// 显示导入截图弹窗
+function showImportRaceModal() {
+  const modal = document.getElementById('modal-overlay');
+  const body = document.getElementById('modal-body');
+  
+  body.innerHTML = `
+    <div class="modal-title">导入报名截图</div>
+    <div style="margin:20px 0;">
+      <p style="color:var(--gray-600); font-size:14px; margin-bottom:16px;">
+        上传报名成功截图或确认邮件截图，系统将自动识别赛事信息
+      </p>
+      <div id="upload-area" style="border:2px dashed var(--gray-300); border-radius:12px; padding:40px 20px; text-align:center; cursor:pointer; transition:all 0.3s;" onclick="document.getElementById('file-input').click()">
+        <div style="font-size:48px; margin-bottom:12px;">📷</div>
+        <div style="color:var(--gray-600);">点击上传截图</div>
+        <div style="color:var(--gray-400); font-size:12px; margin-top:8px;">支持 JPG、PNG 格式</div>
+      </div>
+      <input type="file" id="file-input" accept="image/*" style="display:none;" onchange="handleFileUpload(event)">
+    </div>
+    <div id="ocr-progress" style="display:none; margin:20px 0;">
+      <div style="margin-bottom:8px; font-weight:500;">正在识别文字...</div>
+      <div style="background:var(--gray-200); border-radius:8px; overflow:hidden; height:8px;">
+        <div id="progress-bar" style="background:var(--blue); height:100%; width:0%; transition:width 0.3s;"></div>
+      </div>
+      <div id="progress-text" style="color:var(--gray-500); font-size:12px; margin-top:8px;">0%</div>
+    </div>
+    <div id="ocr-result" style="display:none; margin:20px 0;">
+      <div style="margin-bottom:8px; font-weight:500;">识别结果：</div>
+      <div id="ocr-text" style="background:var(--gray-100); padding:12px; border-radius:8px; font-size:13px; max-height:200px; overflow-y:auto; white-space:pre-wrap;"></div>
+      <div style="margin-top:16px;">
+        <label style="display:block; margin-bottom:8px; font-weight:500;">匹配到的赛事：</label>
+        <select id="matched-race" style="width:100%; padding:12px; border:1px solid var(--gray-300); border-radius:8px; font-size:14px;">
+          <option value="">请选择...</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex; gap:12px; margin-top:24px;">
+      <button onclick="closeModal()" style="flex:1; padding:12px; background:var(--gray-200); color:var(--gray-700); border:none; border-radius:8px; font-size:14px; cursor:pointer;">取消</button>
+      <button id="confirm-import-btn" onclick="confirmImportRace()" style="flex:1; padding:12px; background:var(--blue); color:white; border:none; border-radius:8px; font-size:14px; cursor:pointer; display:none;">确认导入</button>
+    </div>
+  `;
+  
+  modal.classList.add('show');
+}
+
+// 处理文件上传
+async function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const progressDiv = document.getElementById('ocr-progress');
+  const progressBar = document.getElementById('progress-bar');
+  const progressText = document.getElementById('progress-text');
+  const resultDiv = document.getElementById('ocr-result');
+  const ocrText = document.getElementById('ocr-text');
+  
+  progressDiv.style.display = 'block';
+  resultDiv.style.display = 'none';
+  
+  try {
+    const result = await Tesseract.recognize(file, 'chi_sim+eng', {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          const percent = Math.round(m.progress * 100);
+          progressBar.style.width = percent + '%';
+          progressText.textContent = percent + '%';
+        }
+      }
+    });
+    
+    const text = result.data.text;
+    ocrText.textContent = text;
+    resultDiv.style.display = 'block';
+    
+    // 智能匹配赛事
+    matchRacesFromText(text);
+    
+  } catch (error) {
+    alert('识别失败：' + error.message);
+    progressDiv.style.display = 'none';
+  }
+}
+
+// 从OCR文本匹配赛事
+function matchRacesFromText(text) {
+  const select = document.getElementById('matched-race');
+  select.innerHTML = '<option value="">请选择...</option>';
+  
+  // 提取关键词
+  const keywords = [];
+  
+  // 提取赛事名称关键词
+  races.forEach(r => {
+    const cityName = r.city;
+    const raceName = r.name;
+    
+    // 检查文本中是否包含城市名或赛事名
+    if (text.includes(cityName) || text.includes(raceName.replace('马拉松', ''))) {
+      keywords.push(r);
+    }
+  });
+  
+  // 提取日期
+  const dateMatches = text.match(/(\d{4})[年\-\/](\d{1,2})[月\-\/](\d{1,2})/g);
+  if (dateMatches) {
+    dateMatches.forEach(dateStr => {
+      const normalized = dateStr.replace(/[年月]/g, '-').replace(/\//g, '-');
+      races.forEach(r => {
+        if (r.date === normalized && !keywords.find(k => k.id === r.id)) {
+          keywords.push(r);
+        }
+      });
+    });
+  }
+  
+  // 去重并添加到下拉框
+  const uniqueRaces = Array.from(new Map(keywords.map(r => [r.id, r])).values());
+  uniqueRaces.forEach(r => {
+    const option = document.createElement('option');
+    option.value = r.id;
+    option.textContent = `${r.name} - ${r.date}`;
+    select.appendChild(option);
+  });
+  
+  // 如果有匹配结果，显示确认按钮
+  if (uniqueRaces.length > 0) {
+    document.getElementById('confirm-import-btn').style.display = 'block';
+  } else {
+    // 如果没有匹配到，显示所有赛事供手动选择
+    races.forEach(r => {
+      const option = document.createElement('option');
+      option.value = r.id;
+      option.textContent = `${r.name} - ${r.date}`;
+      select.appendChild(option);
+    });
+    document.getElementById('confirm-import-btn').style.display = 'block';
+  }
+}
+
+// 确认导入
+function confirmImportRace() {
+  const raceId = parseInt(document.getElementById('matched-race').value);
+  
+  if (!raceId) {
+    alert('请选择赛事');
+    return;
+  }
+  
+  if (myRaces.find(mr => mr.raceId === raceId)) {
+    alert('该赛事已在你的列表中');
+    return;
+  }
+  
+  myRaces.push({
+    raceId: raceId,
+    status: '已报名',
+    bib: '待分配'
+  });
+  
+  saveMyRaces();
+  closeModal();
+  renderMyRaces();
+  alert('导入成功！');
 }
 
 // ===== 档案保存 =====

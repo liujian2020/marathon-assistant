@@ -90,6 +90,35 @@ body {
 .page { display: none; padding: 16px; max-width: 600px; margin: 0 auto; }
 .page.active { display: block; }
 
+/* Year Selector */
+.year-selector {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  justify-content: center;
+}
+.year-btn {
+  padding: 6px 20px;
+  border-radius: 20px;
+  border: 1px solid var(--gray-300);
+  background: white;
+  color: var(--gray-600);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+  font-weight: 500;
+}
+.year-btn:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.year-btn.active {
+  background: var(--blue);
+  color: white;
+  border-color: var(--blue);
+}
+
 /* Filter Bar */
 .filter-bar {
   display: flex;
@@ -729,6 +758,11 @@ a.channel-tag:hover {
 
 <!-- 赛事日历 -->
 <div id="page-calendar" class="page">
+  <div class="year-selector">
+    <button class="year-btn active" data-year="2026" onclick="switchYear(2026)">2026</button>
+    <button class="year-btn" data-year="2025" onclick="switchYear(2025)">2025</button>
+    <button class="year-btn" data-year="2024" onclick="switchYear(2024)">2024</button>
+  </div>
   <div class="filter-bar">
     <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">全部</button>
     <button class="filter-btn" data-filter="full" onclick="setFilter('full', this)">全马</button>
@@ -825,6 +859,9 @@ a.channel-tag:hover {
   </div>
   <div id="my-races-filter" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; padding:12px; background:var(--gray-100); border-radius:8px;">
     <span style="font-size:13px; color:var(--gray-600); line-height:32px;">筛选：</span>
+    <select id="filter-year" onchange="renderMyRaces()" style="padding:6px 10px; border:1px solid var(--gray-300); border-radius:6px; font-size:13px;">
+      <option value="">全部年份</option>
+    </select>
     <select id="filter-status" onchange="renderMyRaces()" style="padding:6px 10px; border:1px solid var(--gray-300); border-radius:6px; font-size:13px;">
       <option value="">全部报名</option>
       <option value="已报名">已报名</option>
@@ -876,159 +913,47 @@ a.channel-tag:hover {
 </nav>
 
 <script>
-// ===== 赛事数据 =====
-const races = [
-  { id:1, name:"渣打香港马拉松", city:"香港", date:"2026-01-18", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h15m", status:"closed", website:"#", wechat:"香港马拉松", apps:["马拉马拉","数字心动"], desc:"维港起跑，穿越隧道桥梁，最美城市天际线", regDeadline:"2025-12-19" },
-  { id:2, name:"江油马拉松", city:"江油", date:"2026-03-01", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"江油马拉松", apps:["马拉马拉","第一赛道"], desc:"李白故里，诗意赛道", regDeadline:"2026-01-30" },
-  { id:3, name:"娄底马拉松", city:"娄底", date:"2026-03-01", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"娄底马拉松", apps:["数字心动","第一赛道"], desc:"湘中明珠，紫鹊界梯田风光", regDeadline:"2026-01-30" },
-  { id:4, name:"中缅瑞丽-木姐跨国马拉松", city:"瑞丽", date:"2026-03-01", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"瑞丽马拉松", apps:["马拉马拉","数字心动"], desc:"一寨两国，中缅边境跨国跑", regDeadline:"2026-01-30" },
-  { id:5, name:"南京浦口马拉松", city:"南京", date:"2026-03-08", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"南京马拉松", apps:["数字心动","第一赛道"], desc:"浦口老山脚下，温泉之乡赛道", regDeadline:"2026-02-15" },
-  { id:6, name:"永川马拉松", city:"重庆", date:"2026-03-08", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"重庆马拉松", apps:["马拉马拉","第一赛道"], desc:"茶山竹海，永川豆豉飘香", regDeadline:"2026-02-06" },
-  { id:7, name:"上海女子半程马拉松", city:"上海", date:"2026-03-08", time:"07:30", level:"A1类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"上海马拉松", apps:["马拉马拉","数字心动"], desc:"专属女性跑者，精致城市半马", regDeadline:"2026-02-20" },
-  { id:8, name:"湛江半程马拉松", city:"湛江", date:"2026-03-08", time:"07:30", level:"B类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"湛江马拉松", apps:["第一赛道"], desc:"南国海滨，菠萝飘香的红土地", regDeadline:"2026-02-06" },
-  { id:9, name:"孝感马拉松", city:"孝感", date:"2026-03-15", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"孝感马拉松", apps:["马拉马拉"], desc:"孝文化之乡，董永传说发源地", regDeadline:"2026-02-13" },
-  { id:10, name:"清远马拉松", city:"清远", date:"2026-03-15", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"清远马拉松", apps:["数字心动","第一赛道"], desc:"北江之畔，温泉之城", regDeadline:"2026-02-13" },
-  { id:11, name:"万峰林马拉松", city:"兴义", date:"2026-03-15", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"兴义马拉松", apps:["马拉马拉","数字心动"], desc:"万峰成林，喀斯特峰林赛道", regDeadline:"2026-02-13" },
-  { id:12, name:"曲靖罗平花海马拉松", city:"曲靖", date:"2026-03-15", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"曲靖马拉松", apps:["马拉马拉","第一赛道"], desc:"罗平油菜花海，金色赛道奔跑", regDeadline:"2026-02-13" },
-  { id:13, name:"远安马拉松", city:"远安", date:"2026-03-15", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"远安马拉松", apps:["数字心动"], desc:"丹霞地貌，嫘祖故里", regDeadline:"2026-02-13" },
-  { id:14, name:"启东马拉松", city:"启东", date:"2026-03-15", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"启东马拉松", apps:["第一赛道"], desc:"江海交汇处，江苏最早日出", regDeadline:"2026-02-13" },
-  { id:15, name:"花亭湖马拉松", city:"太湖", date:"2026-03-15", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"太湖马拉松", apps:["马拉马拉"], desc:"花亭湖畔，禅宗文化发源地", regDeadline:"2026-02-13" },
-  { id:16, name:"上饶马拉松", city:"上饶", date:"2026-03-15", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"上饶马拉松", apps:["数字心动","第一赛道"], desc:"信江河畔，三清山脚下", regDeadline:"2026-02-13" },
-  { id:17, name:"上海半程马拉松", city:"上海", date:"2026-03-15", time:"07:30", level:"A1类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"上海马拉松", apps:["马拉马拉","数字心动"], desc:"浦东赛道，东方明珠脚下冲刺", regDeadline:"2026-02-28" },
-  { id:18, name:"南京半程马拉松", city:"南京", date:"2026-03-15", time:"07:30", level:"A1类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"南京马拉松", apps:["马拉马拉","数字心动","第一赛道"], desc:"六朝古都，明城墙下奔跑", regDeadline:"2026-02-28" },
-  { id:19, name:"重庆女子半程马拉松", city:"重庆", date:"2026-03-15", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"重庆马拉松", apps:["马拉马拉","第一赛道"], desc:"山城女性专属，南滨路最美赛道", regDeadline:"2026-02-13" },
-  { id:20, name:"南宁半程马拉松", city:"南宁", date:"2026-03-15", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"南宁马拉松", apps:["数字心动"], desc:"绿城南宁，邕江之畔", regDeadline:"2026-02-13" },
-  { id:21, name:"无锡马拉松", city:"无锡", date:"2026-03-22", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h15m", status:"closed", website:"#", wechat:"无锡马拉松", apps:["马拉马拉","数字心动"], desc:"樱花赛道，中国马拉松大满贯赛事", regDeadline:"2025-12-25" },
-  { id:22, name:"钦州马拉松", city:"钦州", date:"2026-03-22", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"钦州马拉松", apps:["第一赛道"], desc:"北部湾海滨，坭兴陶之都", regDeadline:"2026-02-20" },
-  { id:23, name:"贵州仁怀马拉松", city:"仁怀", date:"2026-03-22", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"仁怀马拉松", apps:["马拉马拉","数字心动"], desc:"茅台之乡，酒香伴跑", regDeadline:"2026-02-20" },
-  { id:24, name:"霞浦三沙马拉松", city:"霞浦", date:"2026-03-22", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"霞浦马拉松", apps:["数字心动","第一赛道"], desc:"中国最美滩涂，光影摄影圣地", regDeadline:"2026-02-20" },
-  { id:25, name:"苏州阳澄湖半程马拉松", city:"苏州", date:"2026-03-22", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"苏州马拉松", apps:["马拉马拉"], desc:"阳澄湖畔，大闸蟹之乡", regDeadline:"2026-02-20" },
-  { id:26, name:"重庆沙坪坝半程马拉松", city:"重庆", date:"2026-03-22", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"重庆马拉松", apps:["马拉马拉","第一赛道"], desc:"沙磁文化，歌乐山脚下", regDeadline:"2026-02-20" },
-  { id:27, name:"郑州马拉松", city:"郑州", date:"2026-03-29", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"郑州马拉松", apps:["马拉马拉","数字心动"], desc:"中原腹地，黄河之滨，商都遗址", regDeadline:"2026-03-10" },
-  { id:28, name:"石家庄马拉松", city:"石家庄", date:"2026-03-29", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"石家庄马拉松", apps:["数字心动","第一赛道"], desc:"太行山下，摇滚之城", regDeadline:"2026-02-27" },
-  { id:29, name:"柳州马拉松", city:"柳州", date:"2026-03-29", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"柳州马拉松", apps:["马拉马拉"], desc:"紫荆花城，壮族风情赛道", regDeadline:"2026-02-27" },
-  { id:30, name:"扬州鉴真半程马拉松", city:"扬州", date:"2026-03-29", time:"07:30", level:"A1类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"扬州马拉松", apps:["马拉马拉","数字心动"], desc:"瘦西湖畔，古运河边，烟花三月", regDeadline:"2026-03-10" },
-  { id:31, name:"苏州金鸡湖半程马拉松", city:"苏州", date:"2026-03-29", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"苏州马拉松", apps:["马拉马拉","数字心动","第一赛道"], desc:"金鸡湖畔，工业园区现代赛道", regDeadline:"2026-02-27" },
-  { id:32, name:"芜湖马拉松", city:"芜湖", date:"2026-03-29", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"芜湖马拉松", apps:["数字心动"], desc:"皖江明珠，奇瑞之城", regDeadline:"2026-02-27" },
-  { id:33, name:"昆明半程马拉松", city:"昆明", date:"2026-03-29", time:"07:30", level:"A1类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"昆明马拉松", apps:["马拉马拉","第一赛道"], desc:"春城高原，滇池之畔", regDeadline:"2026-02-27" },
-  { id:34, name:"济宁马拉松", city:"济宁", date:"2026-04-06", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"济宁马拉松", apps:["数字心动","第一赛道"], desc:"孔孟之乡，运河之都", regDeadline:"2026-03-07" },
-  { id:35, name:"武汉马拉松", city:"武汉", date:"2026-04-12", time:"07:30", level:"A1类", projects:["full","half","mini"], closeTime:"6h", status:"closed", website:"#", wechat:"武汉马拉松", apps:["马拉马拉","数字心动"], desc:"穿越长江大桥，樱花季最美赛道", regDeadline:"2025-12-19" },
-  { id:36, name:"北京城市副中心马拉松", city:"北京", date:"2026-04-19", time:"07:30", level:"A类", projects:["full"], closeTime:"6h", status:"closed", website:"#", wechat:"北京马拉松", apps:["马拉马拉","第一赛道"], desc:"通州运河之畔，城市副中心新貌", regDeadline:"2026-03-20" },
-  { id:37, name:"荣成滨海马拉松", city:"荣成", date:"2026-04-19", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"荣成马拉松", apps:["数字心动"], desc:"胶东半岛最东端，海天一色", regDeadline:"2026-03-20" },
-  { id:38, name:"宜宾长江首城马拉松", city:"宜宾", date:"2026-04-19", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"宜宾马拉松", apps:["第一赛道"], desc:"长江第一城，五粮液酒都", regDeadline:"2026-03-20" },
-  { id:39, name:"德州马拉松", city:"德州", date:"2026-04-19", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"德州马拉松", apps:["马拉马拉"], desc:"扒鸡之乡，太阳城", regDeadline:"2026-03-20" },
-  { id:40, name:"永州马拉松", city:"永州", date:"2026-04-19", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"永州马拉松", apps:["数字心动","第一赛道"], desc:"潇湘之源，柳宗元笔下山水", regDeadline:"2026-03-20" },
-  { id:41, name:"杭州女子半程马拉松", city:"杭州", date:"2026-04-19", time:"07:30", level:"A1类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"杭州马拉松", apps:["马拉马拉","数字心动"], desc:"西湖边起跑，女性专属赛事", regDeadline:"2026-03-20" },
-  { id:42, name:"大连马拉松", city:"大连", date:"2026-04-26", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h15m", status:"closed", website:"#", wechat:"大连马拉松", apps:["马拉马拉","数字心动","第一赛道"], desc:"海滨城市，有轨电车之都", regDeadline:"2026-02-12" },
-  { id:43, name:"保定马拉松", city:"保定", date:"2026-04-26", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"保定马拉松", apps:["马拉马拉"], desc:"直隶总督署，京畿重地", regDeadline:"2026-03-27" },
-  { id:44, name:"蚌埠马拉松", city:"蚌埠", date:"2026-04-26", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"蚌埠马拉松", apps:["数字心动","第一赛道"], desc:"珠城，龙子湖畔", regDeadline:"2026-03-27" },
-  { id:45, name:"汶川马拉松", city:"汶川", date:"2026-05-01", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"汶川马拉松", apps:["马拉马拉"], desc:"羌族文化，大爱重生之地", regDeadline:"2026-04-01" },
-  { id:46, name:"秦皇岛马拉松", city:"秦皇岛", date:"2026-05-10", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"秦皇岛马拉松", apps:["马拉马拉","数字心动"], desc:"渤海之滨，山海关外", regDeadline:"2026-04-10" },
-  { id:47, name:"大理马拉松", city:"大理", date:"2026-05-17", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"大理马拉松", apps:["数字心动","第一赛道"], desc:"苍山洱海，风花雪月之城", regDeadline:"2026-04-17" },
-  { id:48, name:"营口鲅鱼圈马拉松", city:"营口", date:"2026-05-17", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"营口马拉松", apps:["马拉马拉"], desc:"渤海湾畔，温泉之乡", regDeadline:"2026-04-17" },
-  { id:49, name:"吉林市马拉松", city:"吉林", date:"2026-05-31", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"吉林马拉松", apps:["马拉马拉","数字心动"], desc:"松花江畔，北国江城", regDeadline:"2026-05-01" },
-  { id:50, name:"兰州马拉松", city:"兰州", date:"2026-06-07", time:"07:30", level:"A1类", projects:["full","half","mini"], closeTime:"6h15m", status:"closed", website:"#", wechat:"兰州马拉松", apps:["马拉马拉","数字心动","第一赛道"], desc:"黄河风情线赛道，清凉夏日跑", regDeadline:"2026-03-04" },
-  { id:51, name:"贵阳马拉松", city:"贵阳", date:"2026-06-14", time:"07:30", level:"A1类", projects:["full","half","mini"], closeTime:"6h", status:"closed", website:"#", wechat:"贵阳马拉松", apps:["马拉马拉","数字心动"], desc:"爽爽贵阳，清凉避暑跑", regDeadline:"2026-05-15" },
-  { id:52, name:"黑河马拉松", city:"黑河", date:"2026-06-21", time:"07:30", level:"B类", projects:["full"], closeTime:"6h", status:"closed", website:"#", wechat:"黑河马拉松", apps:["第一赛道"], desc:"中俄边境，黑龙江畔", regDeadline:"2026-05-22" },
-  { id:53, name:"六盘水马拉松", city:"六盘水", date:"2026-07-19", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"六盘水马拉松", apps:["马拉马拉","数字心动"], desc:"中国凉都，19°C的夏天", regDeadline:"2026-06-19" },
-  { id:54, name:"楚雄马拉松", city:"楚雄", date:"2026-08-02", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"楚雄马拉松", apps:["数字心动","第一赛道"], desc:"彝族火把节之乡", regDeadline:"2026-07-03" },
-  { id:55, name:"阿尔山马拉松", city:"阿尔山", date:"2026-08-16", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"阿尔山马拉松", apps:["马拉马拉"], desc:"森林氧吧，火山温泉之城", regDeadline:"2026-07-17" },
-  { id:56, name:"呼伦贝尔草原马拉松", city:"呼伦贝尔", date:"2026-08-23", time:"07:30", level:"A类", projects:["full"], closeTime:"6h", status:"closed", website:"#", wechat:"呼伦贝尔马拉松", apps:["马拉马拉","数字心动"], desc:"天下第一草原，广阔无垠", regDeadline:"2026-07-24" },
-  { id:57, name:"沈阳康平卧龙湖马拉松", city:"沈阳", date:"2026-08-23", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"沈阳马拉松", apps:["第一赛道"], desc:"卧龙湖畔，湿地生态赛道", regDeadline:"2026-07-24" },
-  { id:58, name:"哈尔滨马拉松", city:"哈尔滨", date:"2026-08-30", time:"07:30", level:"A1类", projects:["full","half","mini"], closeTime:"6h", status:"closed", website:"#", wechat:"哈尔滨马拉松", apps:["马拉马拉","数字心动"], desc:"冰城夏都，松花江畔避暑跑", regDeadline:"2026-07-15" },
-  { id:59, name:"金昌半程马拉松", city:"金昌", date:"2026-09-06", time:"07:30", level:"B类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"金昌马拉松", apps:["数字心动","第一赛道"], desc:"镍都戈壁，紫金花城", regDeadline:"2026-08-07" },
-  { id:60, name:"沈阳马拉松", city:"沈阳", date:"2026-09-13", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"沈阳马拉松", apps:["马拉马拉","数字心动"], desc:"盛京皇城，东北第一城", regDeadline:"2026-08-14" },
-  { id:61, name:"官厅湖马拉松", city:"怀来", date:"2026-09-13", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"官厅湖马拉松", apps:["马拉马拉"], desc:"官厅水库畔，葡萄酒乡", regDeadline:"2026-08-14" },
-  { id:62, name:"榆林马拉松", city:"榆林", date:"2026-09-26", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"榆林马拉松", apps:["数字心动","第一赛道"], desc:"边塞名城，毛乌素沙漠边缘", regDeadline:"2026-09-16" },
-  { id:63, name:"克拉玛依马拉松", city:"克拉玛依", date:"2026-09-26", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"克拉玛依马拉松", apps:["马拉马拉"], desc:"石油之城，雅丹地貌", regDeadline:"2026-09-16" },
-  { id:64, name:"太原马拉松", city:"太原", date:"2026-09-27", time:"07:30", level:"A1类", projects:["full","half","mini"], closeTime:"6h", status:"closed", website:"#", wechat:"太原马拉松", apps:["马拉马拉","数字心动"], desc:"汾河畔开跑，龙城太原", regDeadline:"2026-09-17" },
-  { id:65, name:"衡水湖马拉松", city:"衡水", date:"2026-09-27", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"衡水马拉松", apps:["数字心动","第一赛道"], desc:"衡水湖畔，湿地生态赛道", regDeadline:"2026-09-17" },
-  { id:66, name:"延安红色半程马拉松", city:"延安", date:"2026-09-27", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"延安马拉松", apps:["马拉马拉"], desc:"革命圣地，红色记忆之旅", regDeadline:"2026-09-17" },
-  { id:67, name:"天津团泊湖半程马拉松", city:"天津", date:"2026-09-27", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"天津马拉松", apps:["马拉马拉","数字心动"], desc:"团泊湖畔，津门风光", regDeadline:"2026-09-17" },
-  { id:68, name:"大理小河淌水半程马拉松", city:"大理", date:"2026-09-27", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"大理马拉松", apps:["第一赛道"], desc:"小河淌水故乡，白族风情", regDeadline:"2026-09-17" },
-  { id:69, name:"长宁蜀南竹海半程马拉松", city:"长宁", date:"2026-09-27", time:"07:30", level:"B类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"长宁马拉松", apps:["数字心动"], desc:"蜀南竹海，翡翠长廊", regDeadline:"2026-09-17" },
-  { id:70, name:"石河子马拉松", city:"石河子", date:"2026-10-02", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"石河子马拉松", apps:["马拉马拉","第一赛道"], desc:"军垦新城，戈壁明珠", regDeadline:"2026-09-22" },
-  { id:71, name:"海淀马拉松", city:"北京", date:"2026-10-11", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"海淀马拉松", apps:["马拉马拉","数字心动"], desc:"中关村科技之区，高校云集", regDeadline:"2026-08-08" },
-  { id:72, name:"北京马拉松", city:"北京", date:"2026-10-18", time:"07:30", level:"A1类", projects:["full"], closeTime:"6h15m", status:"open", website:"#", wechat:"北京马拉松", apps:["马拉马拉","数字心动","第一赛道"], desc:"国马，天安门起跑，终点奥林匹克公园", regDeadline:"2026-09-22" },
-  { id:73, name:"济南马拉松", city:"济南", date:"2026-10-18", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"济南马拉松", apps:["马拉马拉","数字心动"], desc:"泉城奔跑，趵突泉大明湖", regDeadline:"2026-09-01" },
-  { id:74, name:"黄河口东营马拉松", city:"东营", date:"2026-10-18", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"东营马拉松", apps:["数字心动","第一赛道"], desc:"黄河入海口，湿地之都", regDeadline:"2026-09-01" },
-  { id:75, name:"西安马拉松", city:"西安", date:"2026-10-18", time:"07:30", level:"A1类", projects:["full","half","mini"], closeTime:"6h", status:"closed", website:"#", wechat:"西安马拉松", apps:["马拉马拉","数字心动"], desc:"古城墙下奔跑，穿越千年", regDeadline:"2026-09-01" },
-  { id:76, name:"烟台马拉松", city:"烟台", date:"2026-10-18", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"烟台马拉松", apps:["马拉马拉","第一赛道"], desc:"海滨仙境，葡萄酒之城", regDeadline:"2026-09-08" },
-  { id:77, name:"泰州马拉松", city:"泰州", date:"2026-10-18", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"upcoming", website:"#", wechat:"泰州马拉松", apps:["数字心动"], desc:"凤城河畔，梅兰芳故乡", regDeadline:"2026-09-08" },
-  { id:78, name:"丽江雪山马拉松", city:"丽江", date:"2026-10-18", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"upcoming", website:"#", wechat:"丽江马拉松", apps:["马拉马拉","数字心动"], desc:"玉龙雪山脚下，高原古城", regDeadline:"2026-09-08" },
-  { id:79, name:"长沙马拉松", city:"长沙", date:"2026-10-25", time:"07:30", level:"A1类", projects:["full","half","mini"], closeTime:"6h", status:"closed", website:"#", wechat:"长沙马拉松", apps:["马拉马拉","数字心动"], desc:"星城长沙，橘子洲头", regDeadline:"2026-08-11" },
-  { id:80, name:"成都马拉松", city:"成都", date:"2026-10-25", time:"07:30", level:"A1类", projects:["full","half","mini"], closeTime:"6h", status:"closed", website:"#", wechat:"成都马拉松", apps:["马拉马拉","数字心动","第一赛道"], desc:"天府之国，美食与跑步并行", regDeadline:"2026-06-24" },
-  { id:81, name:"宝鸡马拉松", city:"宝鸡", date:"2026-10-25", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"宝鸡马拉松", apps:["第一赛道"], desc:"青铜器之乡，炎帝故里", regDeadline:"2026-09-15" },
-  { id:82, name:"怀柔长城马拉松", city:"北京", date:"2026-10-25", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"怀柔马拉松", apps:["马拉马拉"], desc:"慕田峪长城脚下，山水怀柔", regDeadline:"2026-09-25" },
-  { id:83, name:"北京昌平马拉松", city:"北京", date:"2026-10-25", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"昌平马拉松", apps:["数字心动","第一赛道"], desc:"居庸关长城下，明十三陵旁", regDeadline:"2026-09-04" },
-  { id:84, name:"襄阳马拉松", city:"襄阳", date:"2026-10-25", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"upcoming", website:"#", wechat:"襄阳马拉松", apps:["马拉马拉","数字心动"], desc:"古隆中对，三国文化之城", regDeadline:"2026-09-15" },
-  { id:85, name:"威海马拉松", city:"威海", date:"2026-10-25", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"upcoming", website:"#", wechat:"威海马拉松", apps:["马拉马拉","第一赛道"], desc:"海滨花园，中国最宜居城市", regDeadline:"2026-09-15" },
-  { id:86, name:"青岛胶州湾大桥马拉松", city:"青岛", date:"2026-10-25", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"upcoming", website:"#", wechat:"青岛马拉松", apps:["数字心动"], desc:"跨越胶州湾大桥，红瓦碧海", regDeadline:"2026-09-15" },
-  { id:87, name:"常熟尚湖半程马拉松", city:"常熟", date:"2026-10-25", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"upcoming", website:"#", wechat:"常熟马拉松", apps:["第一赛道"], desc:"尚湖之畔，虞山脚下", regDeadline:"2026-09-15" },
-  { id:88, name:"嘉兴马拉松", city:"嘉兴", date:"2026-11-01", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"嘉兴马拉松", apps:["马拉马拉","数字心动"], desc:"红船精神，南湖之畔", regDeadline:"2026-10-01" },
-  { id:89, name:"淮南马拉松", city:"淮南", date:"2026-11-01", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"淮南马拉松", apps:["数字心动","第一赛道"], desc:"豆腐发源地，八公山下", regDeadline:"2026-09-15" },
-  { id:90, name:"新余仙女湖马拉松", city:"新余", date:"2026-11-01", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"新余马拉松", apps:["马拉马拉"], desc:"仙女湖畔，爱情圣地", regDeadline:"2026-10-01" },
-  { id:91, name:"宜昌马拉松", city:"宜昌", date:"2026-11-01", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"宜昌马拉松", apps:["马拉马拉","数字心动"], desc:"三峡门户，水电之都", regDeadline:"2026-10-01" },
-  { id:92, name:"衡阳马拉松", city:"衡阳", date:"2026-11-01", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"衡阳马拉松", apps:["第一赛道"], desc:"南岳衡山，回雁峰前", regDeadline:"2026-10-01" },
-  { id:93, name:"扬州高邮大运河半程马拉松", city:"高邮", date:"2026-11-01", time:"07:30", level:"B类", projects:["half"], closeTime:"3h", status:"open", website:"#", wechat:"高邮马拉松", apps:["数字心动"], desc:"大运河畔，邮驿故里", regDeadline:"2026-10-01" },
-  { id:94, name:"郴州马拉松", city:"郴州", date:"2026-11-07", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"郴州马拉松", apps:["马拉马拉","第一赛道"], desc:"湘南门户，雾漫东江湖", regDeadline:"2026-10-07" },
-  { id:95, name:"南昌马拉松", city:"南昌", date:"2026-11-08", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"南昌马拉松", apps:["马拉马拉","数字心动"], desc:"滕王阁畔，赣江之滨", regDeadline:"2026-09-01" },
-  { id:96, name:"合肥马拉松", city:"合肥", date:"2026-11-08", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"合肥马拉松", apps:["马拉马拉","数字心动"], desc:"巢湖之畔，科创之城", regDeadline:"2026-09-01" },
-  { id:97, name:"滁州马拉松", city:"滁州", date:"2026-11-08", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"滁州马拉松", apps:["数字心动","第一赛道"], desc:"醉翁亭下，琅琊山旁", regDeadline:"2026-10-08" },
-  { id:98, name:"高淳马拉松", city:"南京", date:"2026-11-08", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"高淳马拉松", apps:["马拉马拉"], desc:"国际慢城，固城湖畔蟹黄香", regDeadline:"2026-10-08" },
-  { id:99, name:"南通马拉松", city:"南通", date:"2026-11-08", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"南通马拉松", apps:["马拉马拉","数字心动"], desc:"濠河之畔，近代第一城", regDeadline:"2026-10-08" },
-  { id:100, name:"常德柳叶湖马拉松", city:"常德", date:"2026-11-08", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"常德马拉松", apps:["第一赛道"], desc:"桃花源里，柳叶湖畔", regDeadline:"2026-10-08" },
-  { id:101, name:"眉山马拉松", city:"眉山", date:"2026-11-08", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"眉山马拉松", apps:["数字心动"], desc:"三苏故里，东坡文化", regDeadline:"2026-10-08" },
-  { id:102, name:"乐山双遗马拉松", city:"乐山", date:"2026-11-08", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"乐山马拉松", apps:["马拉马拉","第一赛道"], desc:"乐山大佛旁，双遗产之城", regDeadline:"2026-10-08" },
-  { id:103, name:"顺德半程马拉松", city:"佛山", date:"2026-11-08", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"open", website:"#", wechat:"顺德马拉松", apps:["马拉马拉","数字心动"], desc:"世界美食之都，岭南水乡", regDeadline:"2026-10-08" },
-  { id:104, name:"桂林马拉松", city:"桂林", date:"2026-11-15", time:"07:30", level:"A1类", projects:["full","half","mini"], closeTime:"6h", status:"open", website:"#", wechat:"桂林马拉松", apps:["马拉马拉","数字心动","第一赛道"], desc:"漓江山水甲天下", regDeadline:"2026-09-29" },
-  { id:105, name:"天目湖马拉松", city:"溧阳", date:"2026-11-15", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"溧阳马拉松", apps:["马拉马拉"], desc:"天目湖畔，南山竹海", regDeadline:"2026-10-15" },
-  { id:106, name:"光谷马拉松", city:"武汉", date:"2026-11-15", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"光谷马拉松", apps:["数字心动","第一赛道"], desc:"光谷科技城，青春赛道", regDeadline:"2026-09-10" },
-  { id:107, name:"重庆璧山马拉松", city:"重庆", date:"2026-11-15", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"璧山马拉松", apps:["马拉马拉"], desc:"璧山古城，秀湖公园", regDeadline:"2026-10-15" },
-  { id:108, name:"苏州吴中马拉松", city:"苏州", date:"2026-11-15", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"苏州马拉松", apps:["马拉马拉","数字心动"], desc:"太湖之滨，吴中山水", regDeadline:"2026-10-15" },
-  { id:109, name:"上海长滩半程马拉松", city:"上海", date:"2026-11-15", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"上海马拉松", apps:["马拉马拉","第一赛道"], desc:"宝山长滩，黄浦江畔", regDeadline:"2026-10-06" },
-  { id:110, name:"千岛湖马拉松", city:"淳安", date:"2026-11-22", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"淳安马拉松", apps:["马拉马拉","数字心动"], desc:"千岛碧水，天下秀湖", regDeadline:"2026-10-10" },
-  { id:111, name:"中国-东盟马拉松", city:"防城港", date:"2026-11-22", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"upcoming", website:"#", wechat:"中国东盟马拉松", apps:["数字心动","第一赛道"], desc:"中越边境，北部湾海滨", regDeadline:"2026-10-22" },
-  { id:112, name:"衢州马拉松", city:"衢州", date:"2026-11-22", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"衢州马拉松", apps:["马拉马拉"], desc:"南孔圣地，衢州有礼", regDeadline:"2026-10-22" },
-  { id:113, name:"六安马拉松", city:"六安", date:"2026-11-22", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"六安马拉松", apps:["数字心动","第一赛道"], desc:"皖西门户，大别山下", regDeadline:"2026-09-27" },
-  { id:114, name:"腾冲马拉松", city:"腾冲", date:"2026-11-22", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"腾冲马拉松", apps:["马拉马拉","数字心动"], desc:"火山地热，银杏村金秋", regDeadline:"2026-10-22" },
-  { id:115, name:"义乌半程马拉松", city:"义乌", date:"2026-11-22", time:"07:30", level:"A1类", projects:["half"], closeTime:"3h", status:"open", website:"#", wechat:"义乌马拉松", apps:["马拉马拉","数字心动"], desc:"世界小商品之都", regDeadline:"2026-09-24" },
-  { id:116, name:"黄石半程马拉松", city:"黄石", date:"2026-11-22", time:"07:30", level:"B类", projects:["half"], closeTime:"3h", status:"open", website:"#", wechat:"黄石马拉松", apps:["第一赛道"], desc:"矿冶之都，青铜故里", regDeadline:"2026-10-22" },
-  { id:117, name:"济南半程马拉松", city:"济南", date:"2026-11-22", time:"07:30", level:"A1类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"济南马拉松", apps:["马拉马拉","数字心动"], desc:"泉城风光，趵突泉畔", regDeadline:"2026-10-12" },
-  { id:118, name:"青浦新城半程马拉松", city:"上海", date:"2026-11-22", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"upcoming", website:"#", wechat:"青浦马拉松", apps:["马拉马拉","第一赛道"], desc:"青浦新城，淀山湖畔", regDeadline:"2026-10-22" },
-  { id:119, name:"黄山马拉松", city:"黄山", date:"2026-11-29", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"黄山马拉松", apps:["马拉马拉","数字心动"], desc:"奇松怪石云海，徽州古韵", regDeadline:"2026-09-10" },
-  { id:120, name:"武夷山马拉松", city:"武夷山", date:"2026-11-29", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"武夷山马拉松", apps:["数字心动","第一赛道"], desc:"丹霞地貌，大红袍茶乡", regDeadline:"2026-10-29" },
-  { id:121, name:"婺源马拉松", city:"婺源", date:"2026-11-29", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"婺源马拉松", apps:["马拉马拉"], desc:"中国最美乡村，徽派古建", regDeadline:"2026-10-29" },
-  { id:122, name:"阳江海陵岛马拉松", city:"阳江", date:"2026-11-29", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"阳江马拉松", apps:["马拉马拉","数字心动"], desc:"海陵岛碧海银滩，南海一号", regDeadline:"2026-10-29" },
-  { id:123, name:"惠州马拉松", city:"惠州", date:"2026-11-29", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"惠州马拉松", apps:["第一赛道"], desc:"西湖之畔，巽寮湾海滨", regDeadline:"2026-10-20" },
-  { id:124, name:"陵水半程马拉松", city:"陵水", date:"2026-11-29", time:"07:30", level:"B类", projects:["half"], closeTime:"3h", status:"closed", website:"#", wechat:"陵水马拉松", apps:["马拉马拉"], desc:"清水湾热带海滨，椰风海韵", regDeadline:"2026-10-20" },
-  { id:125, name:"贵州铜仁梵净山马拉松", city:"铜仁", date:"2026-11-29", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"铜仁马拉松", apps:["数字心动","第一赛道"], desc:"梵净山下，弥勒道场", regDeadline:"2026-10-20" },
-  { id:126, name:"深圳马拉松", city:"深圳", date:"2026-12-06", time:"07:30", level:"A1类", projects:["full","half","mini"], closeTime:"6h15m", status:"open", website:"#", wechat:"深圳马拉松", apps:["马拉马拉","数字心动","第一赛道"], desc:"湾区科技之城，深圳湾赛道", regDeadline:"2026-11-06" },
-  { id:127, name:"上合昆明马拉松", city:"昆明", date:"2026-12-06", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"昆明马拉松", apps:["马拉马拉","数字心动"], desc:"春城滇池，高原训练圣地", regDeadline:"2026-11-06" },
-  { id:128, name:"南宁马拉松", city:"南宁", date:"2026-12-06", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"南宁马拉松", apps:["马拉马拉","数字心动"], desc:"绿城邕江，东盟之门", regDeadline:"2026-11-06" },
-  { id:129, name:"温州马拉松", city:"温州", date:"2026-12-06", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"温州马拉松", apps:["数字心动","第一赛道"], desc:"瓯江之畔，商行天下", regDeadline:"2026-09-20" },
-  { id:130, name:"珠海马拉松", city:"珠海", date:"2026-12-06", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"珠海马拉松", apps:["马拉马拉"], desc:"情侣路海滨，百岛之市", regDeadline:"2026-11-06" },
-  { id:131, name:"泉州晋江马拉松", city:"泉州", date:"2026-12-06", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"泉州马拉松", apps:["马拉马拉","数字心动"], desc:"刺桐古城，海丝起点", regDeadline:"2026-11-06" },
-  { id:132, name:"厦门海沧半程马拉松", city:"厦门", date:"2026-12-06", time:"07:30", level:"A1类", projects:["half"], closeTime:"3h", status:"open", website:"#", wechat:"厦门马拉松", apps:["马拉马拉","数字心动","第一赛道"], desc:"海沧湖畔，鹭岛风光", regDeadline:"2026-10-08" },
-  { id:133, name:"澳门马拉松", city:"澳门", date:"2026-12-06", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"upcoming", website:"#", wechat:"澳门马拉松", apps:["数字心动"], desc:"历史城区，世遗赛道", regDeadline:"2026-11-01" },
-  { id:134, name:"琼海博鳌马拉松", city:"琼海", date:"2026-12-12", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"琼海马拉松", apps:["第一赛道"], desc:"博鳌小镇，万泉河畔", regDeadline:"2026-11-12" },
-  { id:135, name:"宁德马拉松", city:"宁德", date:"2026-12-12", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"宁德马拉松", apps:["马拉马拉"], desc:"闽东之光，畲族风情", regDeadline:"2026-11-02" },
-  { id:136, name:"广州马拉松", city:"广州", date:"2026-12-20", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h15m", status:"closed", website:"#", wechat:"广州马拉松", apps:["马拉马拉","数字心动","第一赛道"], desc:"珠江新城起跑，一江两岸风光", regDeadline:"2026-09-11" },
-  { id:137, name:"莆田马拉松", city:"莆田", date:"2026-12-20", time:"07:30", level:"B类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"莆田马拉松", apps:["数字心动"], desc:"妈祖故里，鞋都之城", regDeadline:"2026-11-20" },
-  { id:138, name:"汕头马拉松", city:"汕头", date:"2026-12-20", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"汕头马拉松", apps:["马拉马拉","第一赛道"], desc:"潮汕美食，海滨邹鲁", regDeadline:"2026-11-20" },
-  { id:139, name:"海南儋州马拉松", city:"儋州", date:"2026-12-20", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"儋州马拉松", apps:["马拉马拉","数字心动"], desc:"东坡遗风，千年古郡", regDeadline:"2026-11-20" },
-  { id:140, name:"深圳南山半程马拉松", city:"深圳", date:"2026-12-20", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"open", website:"#", wechat:"深圳马拉松", apps:["马拉马拉","第一赛道"], desc:"南山科技园，创新之城", regDeadline:"2026-11-20" },
-  { id:141, name:"重庆半程马拉松", city:"重庆", date:"2026-12-20", time:"07:30", level:"A1类", projects:["half"], closeTime:"3h", status:"open", website:"#", wechat:"重庆马拉松", apps:["马拉马拉","数字心动"], desc:"南滨路夜景，山城魅力", regDeadline:"2026-11-20" },
-  { id:142, name:"柳州半程马拉松", city:"柳州", date:"2026-12-20", time:"07:30", level:"A类", projects:["half"], closeTime:"3h", status:"open", website:"#", wechat:"柳州马拉松", apps:["第一赛道"], desc:"紫荆花城，百里柳江", regDeadline:"2026-11-20" },
-  { id:143, name:"江门马拉松", city:"江门", date:"2026-12-20", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"江门马拉松", apps:["数字心动"], desc:"中国第一侨乡，碉楼之乡", regDeadline:"2026-10-31" },
-  { id:144, name:"横琴马拉松", city:"珠海", date:"2026-12-27", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"closed", website:"#", wechat:"横琴马拉松", apps:["马拉马拉"], desc:"横琴新区，大湾区赛道", regDeadline:"2026-09-12" },
-  { id:145, name:"梅州马拉松", city:"梅州", date:"2026-12-27", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"梅州马拉松", apps:["数字心动","第一赛道"], desc:"世界客都，足球之乡", regDeadline:"2026-11-27" },
-  { id:146, name:"福州马拉松", city:"福州", date:"2026-12-27", time:"07:30", level:"A1类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"福州马拉松", apps:["马拉马拉","数字心动"], desc:"三坊七巷，有福之州", regDeadline:"2026-09-19" },
-  { id:147, name:"海南三亚马拉松", city:"三亚", date:"2026-12-27", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"三亚马拉松", apps:["马拉马拉","第一赛道"], desc:"热带海滨，天涯海角", regDeadline:"2026-11-27" },
-  { id:148, name:"海口马拉松", city:"海口", date:"2026-12-27", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"海口马拉松", apps:["马拉马拉","数字心动"], desc:"椰城风光，骑楼老街", regDeadline:"2026-11-27" },
-  { id:149, name:"重庆荣昌马拉松", city:"重庆", date:"2026-12-27", time:"07:30", level:"A类", projects:["full","half"], closeTime:"6h", status:"open", website:"#", wechat:"荣昌马拉松", apps:["第一赛道"], desc:"荣昌古镇，卤鹅飘香", regDeadline:"2026-11-27" },
+// ===== 赛事数据（动态加载）=====
+let races = [];
+let availableYears = [2026]; // 可用年份列表
 
-];
+// 加载指定年份的赛事数据
+async function loadRacesByYear(year) {
+  try {
+    const response = await fetch(`data/races-${year}.json`);
+    if (!response.ok) throw new Error(`无法加载 ${year} 年赛事数据`);
+    const data = await response.json();
+    races = data;
+    console.log(`已加载 ${year} 年赛事数据，共 ${races.length} 场`);
+    populateRaceSelect();
+    renderCalendar();
+    return true;
+  } catch (error) {
+    console.error(error);
+    showToast(`加载 ${year} 年赛事数据失败`);
+    return false;
+  }
+}
+
+// 切换年份
+async function switchYear(year) {
+  await loadRacesByYear(year);
+  currentYear = year;
+  currentMonth = 0;
+  selectedDate = null;
+  renderCalendar();
+  document.getElementById('month-title').textContent = `${year}年1月`;
+  // 更新年份选择器
+  document.querySelectorAll('.year-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.year) === year);
+  });
+}
+
+// 初始化赛事数据
+(async function initRaces() {
+  await loadRacesByYear(2026);
+})();
+
 
 // 赛事官网URL映射（已验证的真实官网地址）
 const websiteMap = {
@@ -1646,13 +1571,27 @@ function getPackingList(project) {
 function renderMyRaces() {
   const container = document.getElementById('my-races-list');
   
+  // 更新年份筛选选项
+  updateYearFilter();
+  
   // 获取筛选条件
+  const filterYear = document.getElementById('filter-year').value;
   const filterStatus = document.getElementById('filter-status').value;
   const filterLottery = document.getElementById('filter-lottery').value;
   const filterFinish = document.getElementById('filter-finish').value;
   
   // 过滤赛事
   const filteredRaces = myRaces.filter(mr => {
+    const r = races.find(x => x.id === mr.raceId);
+    if (!r) return false;
+    
+    // 年份过滤
+    if (filterYear) {
+      const raceYear = r.date.split('-')[0];
+      if (raceYear !== filterYear) return false;
+    }
+    
+    // 状态过滤
     if (filterStatus && mr.status !== filterStatus) return false;
     if (filterLottery && mr.lottery !== filterLottery) return false;
     if (filterFinish && mr.finish !== filterFinish) return false;
@@ -1694,6 +1633,35 @@ function renderMyRaces() {
       </div>
     `;
   }).join('');
+}
+
+// 更新年份筛选选项
+function updateYearFilter() {
+  const yearSelect = document.getElementById('filter-year');
+  const currentValue = yearSelect.value;
+  const years = new Set();
+  
+  myRaces.forEach(mr => {
+    const r = races.find(x => x.id === mr.raceId);
+    if (r) {
+      const year = r.date.split('-')[0];
+      years.add(year);
+    }
+  });
+  
+  // 清空现有选项（保留"全部年份"）
+  yearSelect.innerHTML = '<option value="">全部年份</option>';
+  
+  // 按年份倒序添加选项
+  Array.from(years).sort((a, b) => b - a).forEach(year => {
+    const option = document.createElement('option');
+    option.value = year;
+    option.textContent = year + '年';
+    yearSelect.appendChild(option);
+  });
+  
+  // 恢复之前的选择
+  yearSelect.value = currentValue;
 }
 
 // 显示添加赛事弹窗

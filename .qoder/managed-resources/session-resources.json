@@ -1,0 +1,36 @@
+{
+  "generation": "2bad907549a7bb423ed6c16276f5b9684915fabef07bba697ef3594c2e8324a6",
+  "files": null,
+  "skills": [
+    {
+      "skill_id": "skill_00ow8t6wz1qm8qq9dyoq",
+      "version": "1788927073640100",
+      "install_id": "deep-research",
+      "path": "/data/.qoder/skills/deep-research"
+    },
+    {
+      "skill_id": "skill_00ow8t73rrshsf8w6vv5",
+      "version": "1788927073737318",
+      "install_id": "docx",
+      "path": "/data/.qoder/skills/docx"
+    },
+    {
+      "skill_id": "skill_00ow8t7a0inlsv3pahvj",
+      "version": "1788927073828137",
+      "install_id": "pdf",
+      "path": "/data/.qoder/skills/pdf"
+    },
+    {
+      "skill_id": "skill_00ow8t7eiu22ozaag4qr",
+      "version": "1788927073890982",
+      "install_id": "pptx",
+      "path": "/data/.qoder/skills/pptx"
+    },
+    {
+      "skill_id": "skill_00ow8t7lljpc0mo3f10o",
+      "version": "1788927073993629",
+      "install_id": "xlsx",
+      "path": "/data/.qoder/skills/xlsx"
+    }
+  ]
+}

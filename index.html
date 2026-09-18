@@ -43,6 +43,12 @@ body {
   position: sticky;
   top: 0;
   z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.header-content {
+  flex: 1;
 }
 .header h1 {
   font-size: 20px;
@@ -53,6 +59,47 @@ body {
   font-size: 12px;
   opacity: 0.85;
   margin-top: 2px;
+}
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.btn-login {
+  padding: 6px 14px;
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.btn-login:hover {
+  background: rgba(255,255,255,0.3);
+}
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  border: 2px solid rgba(255,255,255,0.3);
+}
+.btn-logout {
+  padding: 4px 10px;
+  background: rgba(255,255,255,0.15);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 /* Bottom Nav */
@@ -329,6 +376,41 @@ body {
   padding-right: 40px;
   color: var(--gray-800);
 }
+
+/* Auth Modal */
+.auth-modal-content {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  width: 90%;
+  max-width: 380px;
+  position: relative;
+  box-shadow: var(--shadow-lg);
+}
+.auth-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--gray-200);
+}
+.auth-tab {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray-400);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  font-family: inherit;
+}
+.auth-tab.active {
+  color: var(--blue);
+  border-bottom-color: var(--blue);
+}
+.auth-form .form-group { margin-bottom: 14px; }
 .detail-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -674,8 +756,13 @@ a.channel-tag:hover {
 <body>
 
 <header class="header">
-  <h1>🏃 跑马助手Agent</h1>
-  <p>AI智能备赛，助你PB</p>
+  <div class="header-content">
+    <h1>🏃 跑马助手Agent</h1>
+    <p>AI智能备赛，助你PB</p>
+  </div>
+  <div class="header-actions" id="header-actions">
+    <button class="btn-login" onclick="showAuthModal()">登录</button>
+  </div>
 </header>
 
 <!-- 首页 - AI备赛生成 -->
@@ -884,6 +971,46 @@ a.channel-tag:hover {
   <div id="my-races-list"></div>
 </div>
 
+<!-- 登录/注册弹窗 -->
+<div class="modal-overlay" id="auth-modal" onclick="closeAuthModal(event)">
+  <div class="auth-modal-content">
+    <button class="modal-close" onclick="closeAuthModal()">✕</button>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login', this)">登录</button>
+      <button class="auth-tab" onclick="switchAuthTab('register', this)">注册</button>
+    </div>
+    <div id="auth-login-form" class="auth-form">
+      <div class="form-group">
+        <label>邮箱</label>
+        <input type="email" id="login-email" placeholder="your@email.com">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="login-password" placeholder="输入密码">
+      </div>
+      <button class="btn-save" onclick="handleLogin()">登录</button>
+      <p style="text-align:center; margin-top:12px; font-size:13px; color:var(--gray-500);">
+        测试账号: admin@marathon.com / admin123
+      </p>
+    </div>
+    <div id="auth-register-form" class="auth-form" style="display:none;">
+      <div class="form-group">
+        <label>邮箱</label>
+        <input type="email" id="register-email" placeholder="your@email.com">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="register-password" placeholder="至少6位">
+      </div>
+      <div class="form-group">
+        <label>确认密码</label>
+        <input type="password" id="register-confirm" placeholder="再次输入密码">
+      </div>
+      <button class="btn-save" onclick="handleRegister()">注册</button>
+    </div>
+  </div>
+</div>
+
 <!-- 赛事详情弹窗 -->
 <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
   <div class="modal-content" id="modal-content">
@@ -954,6 +1081,165 @@ async function switchYear(year) {
   await loadRacesByYear(2026);
 })();
 
+// ===== 认证系统 =====
+const API_BASE = '/api';
+let currentUser = null;
+let authToken = localStorage.getItem('authToken');
+
+// 检查登录状态
+async function checkAuth() {
+  if (!authToken) return false;
+  try {
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    if (!res.ok) throw new Error('未登录');
+    currentUser = await res.json();
+    updateAuthUI();
+    return true;
+  } catch {
+    authToken = null;
+    localStorage.removeItem('authToken');
+    return false;
+  }
+}
+
+// 更新登录后的UI
+function updateAuthUI() {
+  const headerActions = document.getElementById('header-actions');
+  const profileName = document.getElementById('profile-name');
+  if (currentUser) {
+    const name = currentUser.profile?.nickname || currentUser.email;
+    if (headerActions) {
+      headerActions.innerHTML = `
+        <div class="user-avatar" title="${name}">🏃</div>
+        <button class="btn-logout" onclick="handleLogout()">退出</button>
+      `;
+    }
+    if (profileName) profileName.textContent = name;
+  } else {
+    if (headerActions) {
+      headerActions.innerHTML = `<button class="btn-login" onclick="showAuthModal()">登录</button>`;
+    }
+    if (profileName) profileName.textContent = '跑者';
+  }
+}
+
+// 显示登录弹窗
+function showAuthModal() {
+  document.getElementById('auth-modal').classList.add('show');
+}
+
+// 关闭登录弹窗
+function closeAuthModal(e) {
+  if (e && e.target !== document.getElementById('auth-modal')) return;
+  document.getElementById('auth-modal').classList.remove('show');
+}
+
+// 切换登录/注册标签
+function switchAuthTab(tab, el) {
+  document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('auth-login-form').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('auth-register-form').style.display = tab === 'register' ? 'block' : 'none';
+}
+
+// 登录
+async function handleLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!email || !password) return showToast('请填写邮箱和密码');
+  try {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    authToken = data.token;
+    currentUser = data.user;
+    localStorage.setItem('authToken', authToken);
+    updateAuthUI();
+    closeAuthModal();
+    showToast('登录成功');
+    loadMyRacesFromAPI();
+  } catch (err) {
+    showToast(err.message || '登录失败');
+  }
+}
+
+// 注册
+async function handleRegister() {
+  const email = document.getElementById('register-email').value.trim();
+  const password = document.getElementById('register-password').value;
+  const confirm = document.getElementById('register-confirm').value;
+  if (!email || !password) return showToast('请填写邮箱和密码');
+  if (password.length < 6) return showToast('密码至少6位');
+  if (password !== confirm) return showToast('两次密码不一致');
+  try {
+    const res = await fetch(`${API_BASE}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    showToast('注册成功，请登录');
+    switchAuthTab('login', document.querySelector('.auth-tab'));
+  } catch (err) {
+    showToast(err.message || '注册失败');
+  }
+}
+
+// 登出
+function handleLogout() {
+  authToken = null;
+  currentUser = null;
+  localStorage.removeItem('authToken');
+  updateAuthUI();
+  showToast('已退出登录');
+}
+
+// API请求封装（带认证头）
+async function apiFetch(url, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+  const res = await fetch(`${API_BASE}${url}`, { ...options, headers });
+  if (res.status === 401) {
+    handleLogout();
+    showAuthModal();
+    throw new Error('请先登录');
+  }
+  return res;
+}
+
+// 从API加载我的赛事
+async function loadMyRacesFromAPI() {
+  if (!authToken) return;
+  try {
+    const res = await apiFetch('/races/my');
+    if (res.ok) {
+      const data = await res.json();
+      myRaces = data.map(r => ({
+        name: r.name,
+        date: r.date,
+        city: r.city,
+        distance: r.distance,
+        status: r.status === 'registered' ? '已报名' : r.status === 'completed' ? '已完赛' : '未报名',
+        lottery: '待抽签',
+        finish: r.status === 'completed' ? '已完赛' : '未完赛'
+      }));
+      renderMyRaces();
+    }
+  } catch (err) {
+    console.error('加载我的赛事失败:', err);
+  }
+}
+
+// 初始化认证
+checkAuth();
+
 
 // 赛事官网URL映射（已验证的真实官网地址）
 const websiteMap = {
@@ -1008,9 +1294,49 @@ const appLinks = {
 // 我的赛事（从 localStorage 读取）
 let myRaces = JSON.parse(localStorage.getItem('myRaces') || '[]');
 
-// 保存我的赛事到 localStorage
+// 保存我的赛事到 localStorage（兼容旧版本）或 API
 function saveMyRaces() {
-  localStorage.setItem('myRaces', JSON.stringify(myRaces));
+  if (authToken) {
+    // 如果有登录，同步到 API
+    syncMyRacesToAPI();
+  } else {
+    // 否则保存到 localStorage
+    localStorage.setItem('myRaces', JSON.stringify(myRaces));
+  }
+}
+
+// 同步我的赛事到 API
+async function syncMyRacesToAPI() {
+  if (!authToken) return;
+  try {
+    // 先清空 API 中的赛事
+    const existingRes = await apiFetch('/races/my');
+    if (existingRes.ok) {
+      const existing = await existingRes.json();
+      for (const race of existing) {
+        await apiFetch(`/races/my/${race.id}`, { method: 'DELETE' });
+      }
+    }
+    
+    // 添加当前所有赛事
+    for (const mr of myRaces) {
+      const race = races.find(x => x.id === mr.raceId);
+      if (race) {
+        await apiFetch('/races/my', {
+          method: 'POST',
+          body: JSON.stringify({
+            raceId: race.id,
+            customName: race.name,
+            customDate: race.date,
+            customCity: race.city,
+            customDistance: race.distances?.[0] || '全程马拉松'
+          })
+        });
+      }
+    }
+  } catch (err) {
+    console.error('同步赛事失败:', err);
+  }
 }
 
 // ===== 状态 =====

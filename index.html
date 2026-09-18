@@ -823,6 +823,27 @@ a.channel-tag:hover {
       <button onclick="showAddRaceModal()" style="padding:8px 16px; background:var(--blue); color:white; border:none; border-radius:8px; font-size:14px; cursor:pointer;">+ 手动添加</button>
     </div>
   </div>
+  <div id="my-races-filter" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; padding:12px; background:var(--gray-100); border-radius:8px;">
+    <span style="font-size:13px; color:var(--gray-600); line-height:32px;">筛选：</span>
+    <select id="filter-status" onchange="renderMyRaces()" style="padding:6px 10px; border:1px solid var(--gray-300); border-radius:6px; font-size:13px;">
+      <option value="">全部报名</option>
+      <option value="已报名">已报名</option>
+      <option value="未报名">未报名</option>
+    </select>
+    <select id="filter-lottery" onchange="renderMyRaces()" style="padding:6px 10px; border:1px solid var(--gray-300); border-radius:6px; font-size:13px;">
+      <option value="">全部中签</option>
+      <option value="待抽签">待抽签</option>
+      <option value="已中签">已中签</option>
+      <option value="未中签">未中签</option>
+      <option value="候补中">候补中</option>
+    </select>
+    <select id="filter-finish" onchange="renderMyRaces()" style="padding:6px 10px; border:1px solid var(--gray-300); border-radius:6px; font-size:13px;">
+      <option value="">全部完赛</option>
+      <option value="已完赛">已完赛</option>
+      <option value="未完赛">未完赛</option>
+    </select>
+    <button onclick="clearMyRacesFilter()" style="padding:6px 12px; background:var(--gray-200); color:var(--gray-600); border:none; border-radius:6px; font-size:13px; cursor:pointer;">重置</button>
+  </div>
   <div id="my-races-list"></div>
 </div>
 
@@ -1624,19 +1645,33 @@ function getPackingList(project) {
 // ===== 我的赛事 =====
 function renderMyRaces() {
   const container = document.getElementById('my-races-list');
-  if (myRaces.length === 0) {
-    container.innerHTML = '<div class="no-races">还没有报名赛事，点击右上角"添加赛事"按钮开始吧！</div>';
+  
+  // 获取筛选条件
+  const filterStatus = document.getElementById('filter-status').value;
+  const filterLottery = document.getElementById('filter-lottery').value;
+  const filterFinish = document.getElementById('filter-finish').value;
+  
+  // 过滤赛事
+  const filteredRaces = myRaces.filter(mr => {
+    if (filterStatus && mr.status !== filterStatus) return false;
+    if (filterLottery && mr.lottery !== filterLottery) return false;
+    if (filterFinish && mr.finish !== filterFinish) return false;
+    return true;
+  });
+  
+  if (filteredRaces.length === 0) {
+    container.innerHTML = '<div class="no-races">没有符合条件的赛事</div>';
     return;
   }
-  container.innerHTML = myRaces.map((mr, index) => {
+  
+  container.innerHTML = filteredRaces.map((mr, index) => {
     const r = races.find(x => x.id === mr.raceId);
     if (!r) return '';
     const parts = r.date.split('-');
     const months = ['','1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-    const statusClass = mr.status === '已中签' ? 'status-open' : 
-                        mr.status === '已完赛' ? 'status-closed' :
-                        mr.status === '未中签' ? 'status-closed' :
-                        'status-upcoming';
+    const statusColor = mr.status === '已报名' ? '#16a34a' : '#94a3b8';
+    const lotteryColor = mr.lottery === '已中签' ? '#16a34a' : mr.lottery === '未中签' ? '#dc2626' : mr.lottery === '候补中' ? '#d97706' : '#94a3b8';
+    const finishColor = mr.finish === '已完赛' ? '#2563eb' : '#94a3b8';
     return `
       <div class="my-race-card" onclick="showRaceDetail(${r.id})">
         <div class="my-race-date">
@@ -1646,9 +1681,14 @@ function renderMyRaces() {
         <div class="my-race-info">
           <div class="name">${r.name}</div>
           <div class="meta">📍 ${r.city} · ${r.time}开跑</div>
+          <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
+            <span style="font-size:11px; padding:2px 8px; border-radius:4px; background:${statusColor}15; color:${statusColor};">${mr.status}</span>
+            <span style="font-size:11px; padding:2px 8px; border-radius:4px; background:${lotteryColor}15; color:${lotteryColor};">${mr.lottery || '待抽签'}</span>
+            <span style="font-size:11px; padding:2px 8px; border-radius:4px; background:${finishColor}15; color:${finishColor};">${mr.finish || '未完赛'}</span>
+          </div>
         </div>
         <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
-          <span class="my-race-status ${statusClass}">${mr.status}</span>
+          <button onclick="event.stopPropagation(); editMyRace(${index})" style="padding:4px 8px; background:#dbeafe; color:#2563eb; border:none; border-radius:4px; font-size:12px; cursor:pointer;">编辑</button>
           <button onclick="event.stopPropagation(); removeMyRace(${index})" style="padding:4px 8px; background:#fee2e2; color:#dc2626; border:none; border-radius:4px; font-size:12px; cursor:pointer;">删除</button>
         </div>
       </div>
@@ -1673,10 +1713,23 @@ function showAddRaceModal() {
     <div style="margin:20px 0;">
       <label style="display:block; margin-bottom:8px; font-weight:500;">报名状态</label>
       <select id="add-race-status" style="width:100%; padding:12px; border:1px solid var(--gray-300); border-radius:8px; font-size:14px;">
-        <option value="已报名待抽签">已报名（待抽签）</option>
+        <option value="已报名">已报名</option>
+        <option value="未报名">未报名</option>
+      </select>
+    </div>
+    <div style="margin:20px 0;">
+      <label style="display:block; margin-bottom:8px; font-weight:500;">中签状态</label>
+      <select id="add-race-lottery" style="width:100%; padding:12px; border:1px solid var(--gray-300); border-radius:8px; font-size:14px;">
+        <option value="待抽签">待抽签</option>
         <option value="已中签">已中签</option>
         <option value="未中签">未中签</option>
         <option value="候补中">候补中</option>
+      </select>
+    </div>
+    <div style="margin:20px 0;">
+      <label style="display:block; margin-bottom:8px; font-weight:500;">完赛状态</label>
+      <select id="add-race-finish" style="width:100%; padding:12px; border:1px solid var(--gray-300); border-radius:8px; font-size:14px;">
+        <option value="未完赛">未完赛</option>
         <option value="已完赛">已完赛</option>
       </select>
     </div>
@@ -1693,6 +1746,8 @@ function showAddRaceModal() {
 function addRaceToMyList() {
   const raceId = parseInt(document.getElementById('add-race-select').value);
   const status = document.getElementById('add-race-status').value;
+  const lottery = document.getElementById('add-race-lottery').value;
+  const finish = document.getElementById('add-race-finish').value;
   
   if (!raceId) {
     alert('请选择赛事');
@@ -1708,6 +1763,8 @@ function addRaceToMyList() {
   myRaces.push({
     raceId: raceId,
     status: status,
+    lottery: lottery,
+    finish: finish,
     bib: '待分配'
   });
   
@@ -1723,6 +1780,72 @@ function removeMyRace(index) {
     saveMyRaces();
     renderMyRaces();
   }
+}
+
+// 编辑我的赛事
+function editMyRace(index) {
+  const mr = myRaces[index];
+  const r = races.find(x => x.id === mr.raceId);
+  if (!r) return;
+  
+  const modal = document.getElementById('modal-overlay');
+  const body = document.getElementById('modal-body');
+  
+  body.innerHTML = `
+    <div class="modal-title">编辑赛事状态</div>
+    <div style="margin:20px 0; padding:12px; background:var(--gray-100); border-radius:8px;">
+      <div style="font-weight:500;">${r.name}</div>
+      <div style="font-size:13px; color:var(--gray-600); margin-top:4px;">📍 ${r.city} · ${r.date}</div>
+    </div>
+    <div style="margin:20px 0;">
+      <label style="display:block; margin-bottom:8px; font-weight:500;">报名状态</label>
+      <select id="edit-race-status" style="width:100%; padding:12px; border:1px solid var(--gray-300); border-radius:8px; font-size:14px;">
+        <option value="已报名" ${mr.status === '已报名' ? 'selected' : ''}>已报名</option>
+        <option value="未报名" ${mr.status === '未报名' ? 'selected' : ''}>未报名</option>
+      </select>
+    </div>
+    <div style="margin:20px 0;">
+      <label style="display:block; margin-bottom:8px; font-weight:500;">中签状态</label>
+      <select id="edit-race-lottery" style="width:100%; padding:12px; border:1px solid var(--gray-300); border-radius:8px; font-size:14px;">
+        <option value="待抽签" ${mr.lottery === '待抽签' ? 'selected' : ''}>待抽签</option>
+        <option value="已中签" ${mr.lottery === '已中签' ? 'selected' : ''}>已中签</option>
+        <option value="未中签" ${mr.lottery === '未中签' ? 'selected' : ''}>未中签</option>
+        <option value="候补中" ${mr.lottery === '候补中' ? 'selected' : ''}>候补中</option>
+      </select>
+    </div>
+    <div style="margin:20px 0;">
+      <label style="display:block; margin-bottom:8px; font-weight:500;">完赛状态</label>
+      <select id="edit-race-finish" style="width:100%; padding:12px; border:1px solid var(--gray-300); border-radius:8px; font-size:14px;">
+        <option value="未完赛" ${mr.finish === '未完赛' ? 'selected' : ''}>未完赛</option>
+        <option value="已完赛" ${mr.finish === '已完赛' ? 'selected' : ''}>已完赛</option>
+      </select>
+    </div>
+    <div style="display:flex; gap:12px; margin-top:24px;">
+      <button onclick="closeModal()" style="flex:1; padding:12px; background:var(--gray-200); color:var(--gray-700); border:none; border-radius:8px; font-size:14px; cursor:pointer;">取消</button>
+      <button onclick="saveEditRace(${index})" style="flex:1; padding:12px; background:var(--blue); color:white; border:none; border-radius:8px; font-size:14px; cursor:pointer;">保存</button>
+    </div>
+  `;
+  
+  modal.classList.add('show');
+}
+
+// 清除筛选条件
+function clearMyRacesFilter() {
+  document.getElementById('filter-status').value = '';
+  document.getElementById('filter-lottery').value = '';
+  document.getElementById('filter-finish').value = '';
+  renderMyRaces();
+}
+
+// 保存编辑
+function saveEditRace(index) {
+  myRaces[index].status = document.getElementById('edit-race-status').value;
+  myRaces[index].lottery = document.getElementById('edit-race-lottery').value;
+  myRaces[index].finish = document.getElementById('edit-race-finish').value;
+  
+  saveMyRaces();
+  closeModal();
+  renderMyRaces();
 }
 
 // 显示导入截图弹窗

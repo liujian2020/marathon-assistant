@@ -63,6 +63,17 @@ CREATE TABLE IF NOT EXISTS admin_logs (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- 赛事报名状态缓存表
+CREATE TABLE IF NOT EXISTS race_status_cache (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  race_id INT NOT NULL UNIQUE,
+  status VARCHAR(50) NOT NULL,
+  checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  expires_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (race_id) REFERENCES races(id) ON DELETE CASCADE,
+  INDEX idx_expires (expires_at)
+);
+
 -- 插入默认管理员（密码: admin123）
 INSERT INTO users (email, password_hash, role) VALUES 
 ('admin@marathon.com', '$2a$10$rDqH8xKZJZm5XZm5XZm5XOq5XZm5XZm5XZm5XZm5XZm5XZm5XZm5', 'admin')

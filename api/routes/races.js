@@ -1,6 +1,7 @@
 const express = require('express');
 const pool = require('../db/pool');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { checkRaceStatus, updateAllRaceStatus } = require('../services/raceStatusChecker');
 
 const router = express.Router();
 
@@ -140,6 +141,47 @@ router.delete('/my/:id', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('删除赛事失败:', error);
     res.status(500).json({ error: '删除赛事失败' });
+  }
+});
+
+// 获取单个赛事的实时报名状态
+router.get('/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const status = await checkRaceStatus(id);
+    
+    if (!status) {
+      return res.status(404).json({ error: '赛事不存在' });
+    }
+    
+    const statusLabels = {
+      'open': '报名中',
+      'closed': '已截止',
+      'upcoming': '即将开放',
+      'lottery': '抽签中',
+      'unknown': '未知'
+    };
+    
+    res.json({
+      raceId: parseInt(id),
+      status: status,
+      statusLabel: statusLabels[status] || '未知',
+      checkedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('查询报名状态失败:', error);
+    res.status(500).json({ error: '查询失败，请稍后重试' });
+  }
+});
+
+// 手动触发批量更新（管理员接口）
+router.post('/update-all-status', requireAdmin, async (req, res) => {
+  try {
+    await updateAllRaceStatus();
+    res.json({ message: '批量更新完成' });
+  } catch (error) {
+    console.error('批量更新失败:', error);
+    res.status(500).json({ error: '更新失败' });
   }
 });
 

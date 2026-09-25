@@ -29,6 +29,9 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: '服务器内部错误' });
 });
 
+// 启动定时任务
+require('./services/scheduler');
+
 // 启动服务器
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`服务器运行在端口 ${PORT}`);
